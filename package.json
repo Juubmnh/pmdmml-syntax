@@ -1,0 +1,143 @@
+{
+  "name": "pmdmml-syntax",
+  "displayName": "PMDMML-Syntax",
+  "description": "Provides syntax highlighting for M.Kajihara's Professional Music Driver MML",
+  "version": "1.0.5",
+  "publisher": "Juubmnh",
+  "repository": "https://github.com/Juubmnh/pmdmml-syntax",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.105.0"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
+  "activationEvents": [],
+  "main": "./out/extension.js",
+  "contributes": {
+    "languages": [
+      {
+        "id": "pmdmml",
+        "aliases": [
+          "PMDMML",
+          "pmdmml"
+        ],
+        "extensions": [
+          ".mml"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "configuration": [
+      {
+        "title": "PMDMML Config",
+        "properties": {
+          "pmdmml-syntax.batchPath": {
+            "type": "string",
+            "description": "Used for compiling .MML files"
+          },
+          "pmdmml-syntax.pattern1": {
+            "type": "string",
+            "default": ";.*|`[^`]*`"
+          },
+          "pmdmml-syntax.pattern2": {
+            "type": "string",
+            "default": "^#.*|~\\$\\d*|[\"'/]|\\|!?[A-Za-z]*"
+          },
+          "pmdmml-syntax.pattern3": {
+            "type": "string",
+            "default": "^@.*|@@?\\d*|(?<!\\|)!\\S*"
+          },
+          "pmdmml-syntax.pattern4": {
+            "type": "string",
+            "default": "R\\d*|^[A-Za-z]+"
+          },
+          "pmdmml-syntax.pattern5": {
+            "type": "string",
+            "default": "[\\[:L]|\\]\\d*"
+          },
+          "pmdmml-syntax.pattern6": {
+            "type": "string",
+            "default": "(?<!^\\S*)(?:[oXlCQqvV)(sOPwBIHtTSWyFNnmZA]|_[_{M]?|(?<=_{.*)}|FB|D[DXMFSPR]?|sdd?|EX?|M[WMXPD]?[AB]?|#[#fwpaD]?|sk|px?|\\\\V|\\\\[vlmr]bschti)[=+\\-^)(]?[%l]?\\$?\\d*\\.*(?:,(?:[+-]?l?|%[+-]?)\\$?\\d*\\.*)?(?:,[+-]?l?\\$?\\d*\\.*)?(?:,\\$?\\d*){0,3}| \\$?\\d+|\\*[AB]?\\$?\\d*(?:,[AB]?\\$?\\d*)?"
+          },
+          "pmdmml-syntax.style1": {
+            "type": "string",
+            "default": "#727169|italic"
+          },
+          "pmdmml-syntax.style2": {
+            "type": "string",
+            "default": "#E6C384|italic"
+          },
+          "pmdmml-syntax.style3": {
+            "type": "string",
+            "default": "#D27E99"
+          },
+          "pmdmml-syntax.style4": {
+            "type": "string",
+            "default": "#957FB8||800"
+          },
+          "pmdmml-syntax.style5": {
+            "type": "string",
+            "default": "#9CABCA"
+          },
+          "pmdmml-syntax.style6": {
+            "type": "string",
+            "default": "#76946A"
+          }
+        }
+      }
+    ],
+    "commands": [
+      {
+        "command": "pmdmml-syntax.compile",
+        "title": "Compile to .M"
+      },
+      {
+        "command": "pmdmml-syntax.runTool",
+        "title": "Run timbre trial"
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "pmdmml-syntax.compile",
+        "win": "ctrl+s",
+        "linux": "ctrl+s",
+        "mac": "cmd+s",
+        "when": "editorTextFocus"
+      }
+    ],
+    "menus": {
+      "editor/context": [
+        {
+          "command": "pmdmml-syntax.compile",
+          "group": "navigation",
+          "when": "resourceExtname =~ /\\.mml/i"
+        },
+        {
+          "command": "pmdmml-syntax.runTool",
+          "group": "navigation",
+          "when": "resourceExtname =~ /\\.mml/i && isWindows"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "pretest": "npm run compile && npm run lint",
+    "lint": "eslint src",
+    "test": "vscode-test"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.105.0",
+    "@types/mocha": "^10.0.10",
+    "@types/node": "22.x",
+    "@typescript-eslint/eslint-plugin": "^8.45.0",
+    "@typescript-eslint/parser": "^8.45.0",
+    "eslint": "^9.36.0",
+    "typescript": "^5.9.3",
+    "@vscode/test-cli": "^0.0.11",
+    "@vscode/test-electron": "^2.5.2"
+  }
+}
