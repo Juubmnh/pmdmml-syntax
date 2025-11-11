@@ -1,0 +1,252 @@
+# *Professional Music Driver [P.M.D.] version 4.8 MML Command Manual*
+
+# Apr.4th 1997 by M.Kajihara (KAJA)
+# English Translation by Blaze and Pigu
+# HTML Version by Pigu
+
+# 1.1. Part Notation
+^[A-Za-z]+
+
+# 2. Overall Control Commands
+^#.*
+
+# 3.1. FM Instrument Definition
+^@(?:\s*\d+){3}(?:\s*=.*)?$
+
+# 1.3. Numerical Notation Methods
+# 4.1. Pitch Interval/Duration Setting
+(?:[cdefgab]=?[+-]?|x)\d*\.*
+
+# 4.2. Rest/Duration Setting
+r\d*\.*
+
+# 4.3. Portamento Setting
+{(?:(?:o\d+|[<>\s])*[cdefgab]){2}(?:o\d+|[<>\s])*}\d*\.*(?:,\d*)?
+
+# 4.4. Octave Setting
+# 4.7. Whole Octave Change
+o[+-]?\d+
+
+# 4.5. Octave Up/Down
+[><]
+
+# 4.6. Octave Up/Down Notation Reversal
+X
+
+# 4.8. Default Length Setting
+l%?\d+\.*
+
+# 4.9. Processing the Previously Used Note Length
+[l ](?:[=+-]?\d+\.*|\^\d+)
+
+# 4.10. Tie/Slur Setting
+&&?\d*\.*
+
+# 4.11. Whole Note Length Setting
+C\d+
+
+# 4.12. Sound Cut Setting 1
+Q%?\d+
+
+# 4.13. Sound Cut Setting 2
+q(?:\d*|l\d+\.*)?(?:-(?:\d*|l\d+)?)?(?:,(?:\d+|l\d+\.*))?
+
+# 4.14. Modulation Setting
+__?[+-]\d+
+
+# 4.15. Transposition Setting
+_{[+\-=][cdefgab\s]*}
+
+# 4.16. Master Modulation Setting
+_M[+-]\d+
+
+# 5.1. Volume Setting 1
+# 5.3. Overall Volume Change 1
+# 5.4. Overall Volume Change 2
+v[+\-)(]?\d+
+
+# 5.2. Volume Setting 2
+V\d+
+
+# 5.5. Relative Volume Change
+[)(]\^?%?\d*
+
+# 6.1. Instrument Number Setting
+@+\d+(?:,[+-]?\d+){0,3}
+
+# 6.2. FM Slot Use Setting
+s\d+
+
+# 6.3. FM TL Setting
+O\d+,[+-]?\d+
+
+# 6.4. FM FB Setting
+FB[+-]?\d+
+
+# 6.5. SSG/OPM Tone/Noise Output Selection
+P\d+
+
+# 6.6. Noise frequency setting
+w[+-]?\d+
+
+# 1.2. Using the Rhythm Channel (K/R)
+# 6.7. Rhythm Pattern Selection/Playback
+R\d+
+
+# 7.1. Detune Setting
+DD?[+-]?\d+
+
+# 7.2. FM Channel 3 Per-Slot Detune Setting
+sdd?\d+,[+-]?\d+
+
+# 7.3. SSG Pitch Interval Correction Setting
+DX\d+
+
+# 7.4. Bend Width Setting
+B\d+
+
+# 7.5. Pitch Setting
+I[+-]?\d+
+
+# 7.6. Master Detune setting
+DM[+-]?\d+
+
+# 8.1. SSG/PCM Software Envelope Setting
+E\d+(?:,[+-]?\d+(?:,\d+){2}|(?:,\d+){4,5})
+
+# 8.2. Software Envelope Speed Setting
+EX\d+
+
+# 9.1. Software LFO Setting
+M[AB]?(?:\d+|l\d+\.*)(?:(?:,\d+)(?:,[+-]?\d+)(?:,\d+))?
+
+# 9.2. Software LFO Waveform Setting
+MW[AB]?\d+
+
+# 9.3. Software LFO Switch
+\*\d+(?:,\d+)?|\*A\d+(?:,B?\d+)?|\*B\d+(?:,A\d+)?
+
+# 9.4. Software LFO Slot Setting
+MM[AB]?\d+
+
+# 9.5. Software LFO Speed Setting
+MX[AB]?\d+
+
+# 9.6. Dedicated Rise/Fall LFO Setting
+MP[AB]?[+-]\d+(?:,(?:\d+|l\d+\.*)(?:,\d+)?)?
+
+# 9.7. LFO Depth Temporal Change Setting
+MD[AB]?\d+(?:,[+-]\d+(?:,\d+)?)?
+
+# 9.10. Hardware LFO Speed/Delay Setting
+H\d+(?:,\d+)?(?:,(?:\d+|l\d+\.*))?
+
+# 9.11. Hardware LFO Switch/Depth Setting (OPNA)
+#\d+(?:,\d+)?
+
+# 9.12. Hardware LFO Frequency/Waveform/Depth Setting (OPM)
+##\d+,\d+,[+-]\d+,\d+|#[fwa]\d+|#p[+-]\d+
+
+# 9.13. Hardware LFO Delay Setting
+#D(?:\d+|l\d+\.*)
+
+# 10.1. Local loop setting
+\[.*:.*\]\d*
+
+# 10.2. Global loop setting
+L
+
+# 11.1. Tempo Setting 1
+t[+-]?\d+
+
+# 11.2. Tempo setting 2
+T[+-]?\d+
+
+# 12.1. Grace Note Setting
+S(?:\d+|l\d+\.*)(?:,[+-]\d+(?:,\d+)?)?
+
+# 12.2. Pseudo Echo Setting
+W(?:\d+|l\d+\.*)(?:,%?[+-]\d+(?:,\d+)?)?
+
+# 12.3. Keyon Delay Per Slot Setting
+sk\d+(?:,(?:\d+|l\d+\.*))?
+
+# 12.4. Broken Chord Setting
+{{(?:(?:o\d+|[<>\s])*[cdefgab]){1,16}(?:o\d+|[<>\s])*}}\d*\.*(?:,\d+(?:,\d+(?:,\d+(?:,[+-]\d+)?)?)?)?
+
+# 13.1. Pan setting 1
+p\d+
+
+# 13.2. Pan Setting 2
+px[+-]\d+(?:,\d+)?
+
+# 14.1. Rhythm Sound Source Shot/Dump Control
+\\[bschti]p?
+
+# 14.2. Rhythm Sound Source Master Volume Setting
+\\V[+-]?\d+
+
+# 14.3. Rhythm Sound Source Individual Volume Setting
+\\v[bschti][+-]?\d+
+
+# 14.4. Rhythm Sound Source Output Position Setting
+\\[lmr][bschti]
+
+# 15.1. FM Chip Direct Output
+y\d+,\d+
+
+# 15.2. PDR Operation Mode Control
+\*\d+
+
+# 15.3. Fade Out Setting
+D\d+
+
+# 15.4. Individual Sound Source Volume Down Setting
+D[FSPR][+-]?\d+
+
+# 15.5. FM Sound Effect Playback
+N\d+
+
+# 15.6. SSG Sound Effect Playback
+n\d+
+
+# 15.7. Channel Mask Control
+m\d+
+
+# 15.8. Measure Length Setting
+Z\d+
+
+# 15.9. Write to Status1
+~[+-]?\d+
+
+# 15.10. PCM Method Selection
+A\d+
+
+# 3.2. MML Variable Definition
+# 16.1. Defined Variable Utilization
+(?<!\|)!\S+
+
+# 16.2. MML Skip Control 1
+"
+
+# 16.3. MML Skip Control 2
+'
+
+# 16.4. Part Limit Setting
+\|!?[A-Za-z]*
+
+# 16.5. Compilation End
+/
+
+# 1.4. Comment Notation Methods
+# 16.6. Comment Setting
+;.*
+
+# 16.7. Comment Setting 2
+`[^`]*`
+
+# -------------------- Hints --------------------
+# Digits may also be replaced with hexadecimal numbers starting with "$" -> \$[0-9A-Fa-f]
+# Numerical Notation Methods cannot appear at the beginning of a line -> (?<!^\S*)
+# "\" can only appear before the symbol when using Rhythm Sound Source Commands -> (?<!\\\S*)
+# If you find any problems during use, please report them in time

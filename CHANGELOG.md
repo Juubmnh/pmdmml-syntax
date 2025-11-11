@@ -1,5 +1,11 @@
 # Change Log
 
+### 1.0.6
+
+* Enhanced syntax highlighting.
+* Improved hover display and definition lookup.
+* Bug fixed.
+
 ### 1.0.4
 
 * Regex bug fixed.

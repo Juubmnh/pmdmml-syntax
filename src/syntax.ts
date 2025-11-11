@@ -1,6 +1,24 @@
-import vscode, { DefinitionProvider, Position, TextDocument } from 'vscode'
+import vscode, { DefinitionProvider, Position, TextDocument, Uri } from 'vscode'
 import path from 'path'
 import fs from 'fs'
+
+const SSG_ENVELOPE_MAPPING = [
+    'E0,0,0,0	Default',
+    'E2,-1,0,1	Synth type 1',
+    'E2,-2,0,1	Synth type 2',
+    'E2,-2,0,8	Synth type 3',
+    'E2,-1,24,1	Piano type 1',
+    'E2,-2,24,1	Piano type 2',
+    'E2,-2,4,1	Glockenspiel/Marimba type',
+    'E2,1,0,1	Strings Type',
+    'E1,2,0,1	Brass type 1',
+    'E1,2,24,1	Brass type 2'
+]
+
+function resolveSSGEnvelope(id: number) {
+    if (id < 0 || id > 9) return null
+    return SSG_ENVELOPE_MAPPING[id]
+}
 
 const SSG_DRUM_MAPPING = [
     'Bass Drum',
@@ -30,11 +48,34 @@ export class MMLDocument {
     uri: vscode.Uri
     lines: string[]
     pos: vscode.Position
+    static cache: Map<vscode.Uri, { content: string[], mtimeMs: number }>
 
     constructor(uri: vscode.Uri, pos?: vscode.Position) {
         this.uri = uri
-        const text = fs.readFileSync(uri.fsPath, 'utf8')
-        this.lines = text.split(/\r?\n/)
+
+        const editor = vscode.window.activeTextEditor
+        if (editor && uri == editor.document.uri) {
+            this.lines = editor.document.getText().split(/\r?\n/)
+        } else {
+            if (!MMLDocument.cache) MMLDocument.cache = new Map()
+
+            let reload, cached, mtimeMs
+            cached = MMLDocument.cache.get(uri)
+            if (!cached) reload = true
+            else {
+                mtimeMs = fs.statSync(uri.fsPath).mtimeMs
+                reload = cached.mtimeMs != mtimeMs
+            }
+
+            if (reload) {
+                const text = fs.readFileSync(uri.fsPath, 'utf8')
+                this.lines = text.split(/\r?\n/)
+                MMLDocument.cache.set(uri, { content: this.lines, mtimeMs: mtimeMs! })
+            } else {
+                this.lines = cached!.content
+            }
+        }
+
         this.pos = pos ?? new vscode.Position(this.lines.length - 1, 0)
     }
 
@@ -74,46 +115,74 @@ export class InstrumentProvider implements vscode.HoverProvider, DefinitionProvi
         return config.get<string>('batchPath') !== null
     }
 
-    mmlCache: Map<string, MMLDocument>
-    getOrSetMMLDoc(pathAndKey: string): MMLDocument {
-        let doc = this.mmlCache.get(pathAndKey)
-        if (!doc) {
-            doc = MMLDocument.fromPath(pathAndKey)
-            this.mmlCache.set(pathAndKey, doc)
-        }
-        return doc
-    }
-
-    ffFileCache: Map<string, MMLDocument>
-    getOrSetFFFile(nameAndKey: string): MMLDocument {
-        let doc = this.ffFileCache.get(nameAndKey)
-        if (!doc) {
-            doc = MMLDocument.fromPath(`${this.env}\\${nameAndKey}.IDX`)
-            this.ffFileCache.set(nameAndKey, doc)
-        }
-        return doc
-    }
-
-    constructor() {
-        this.mmlCache = new Map<string, MMLDocument>
-        this.ffFileCache = new Map<string, MMLDocument>
-    }
-
-    findLastFFFile(document: MMLDocument, visited = new Set<string>()): string | null {
-        if (visited.has(document.uri.path)) return null
-        visited.add(document.uri.path)
+    findInstrumentDefinition(document: MMLDocument, token: string, fileName: string, visited = new Set<string>())
+        : { definition: string, fileName: string, location: vscode.Location } | null {
+        const key = document.uri.path.toUpperCase()
+        if (visited.has(key)) return null
+        visited.add(key)
 
         for (let line = document.pos.line; line >= 0; line--) {
             const text = document.lineAt(line);
-            const match = text.match(/^#(FFFile|Include)\s+(.+)\.(FFL?|MML)/i)
-            if (!match) continue
+            let match = text.match(new RegExp(`^@\\s*0*${token}\\s+(.+)`))
+            if (match) {
+                return {
+                    definition: match[1],
+                    fileName: path.basename(document.uri.fsPath, path.extname(document.uri.fsPath)),
+                    location: new vscode.Location(document.uri, new vscode.Position(line, 0))
+                }
+            }
 
-            const fileType = match[1].toUpperCase()
-            if (fileType == 'FFFILE') {
-                return match[2]
-            } else if (fileType == 'INCLUDE') {
-                const nextDoc = this.getOrSetMMLDoc(`${this.env}\\${match[2]}.MML`.toUpperCase())
-                const result = this.findLastFFFile(nextDoc, visited)
+            match = text.match(/^#(FFFile)\s+(.+)\.FFL?|^#(Include)\s+(.+)/i)
+            if (match) {
+                if (match[1]) {
+                    const ffFile = MMLDocument.fromPath(`${this.env}\\${match[2]}.MML`)
+                    let instrumentMatch, index
+                    for (let i = 0; i < ffFile.lineCount; i++) {
+                        instrumentMatch = ffFile.lines[i].match(new RegExp(`^@\\s*0*${token}\\s+(.+)`))
+                        if (instrumentMatch) {
+                            index = i
+                            break
+                        }
+                    }
+                    if (!instrumentMatch) continue
+
+                    return {
+                        definition: instrumentMatch[1],
+                        fileName: match[2],
+                        location: new vscode.Location(ffFile.uri, new vscode.Position(index!, 0))
+                    }
+                } else if (match[3]) {
+                    const nextDoc = MMLDocument.fromPath(`${this.env}\\${match[4]}`)
+                    const result = this.findInstrumentDefinition(nextDoc, token, match[4], visited)
+                    if (result) return result
+                }
+            }
+        }
+
+        return null
+    }
+
+    findVariableDefinition(document: MMLDocument, token: string, fileName: string, visited = new Set<string>())
+        : { definition: string, fileName: string, location: vscode.Location } | null {
+        const key = document.uri.path.toUpperCase()
+        if (visited.has(key)) return null
+        visited.add(key)
+
+        for (let line = document.pos.line; line >= 0; line--) {
+            const text = document.lineAt(line);
+            const match = text.match(new RegExp(`^${token}\\s*(.*)`))
+            if (match) {
+                return {
+                    definition: match[1],
+                    fileName: fileName,
+                    location: new vscode.Location(document.uri, document.pos)
+                }
+            } else {
+                const includeMatch = text.match(/^#Include\s+(.+)/i)
+                if (!includeMatch) continue
+
+                const nextDoc = MMLDocument.fromPath(`${this.env}\\${includeMatch[1]}`)
+                const result = this.findVariableDefinition(nextDoc, token, includeMatch[1], visited)
                 if (result) return result
             }
         }
@@ -125,63 +194,80 @@ export class InstrumentProvider implements vscode.HoverProvider, DefinitionProvi
         : vscode.ProviderResult<vscode.Definition | vscode.DefinitionLink[]> {
         if (!this.isEnvSet) return
 
-        const textLine = document.lineAt(position.line)
-        let source = /@(\d+)/g.exec(textLine.text)
-        if (textLine.text.match(/^R/)) return
-        if (!source) return
-
-        const identifier = source[1]
-        const mmlDoc = MMLDocument.fromTextDoc(document/*, position*/)
-        const ffFileName = this.findLastFFFile(mmlDoc)
-        if (!ffFileName) return
-
-        const ffFile = this.getOrSetFFFile(ffFileName)
-        let instrumentMatch, index
-        for (let i = 0; i < ffFile.lineCount; i++) {
-            instrumentMatch = ffFile.lines[i].match(new RegExp(`@0*${identifier}\\s+(.+)`))
-            if (instrumentMatch) {
-                index = i
-                break
+        const line = document.lineAt(position.line).text
+        if (line.match(/^[GHIR]/)) return
+        
+        const match = line.match(/^#(FFFile)\s+(.+)\.FFL?|^#(Include)\s+(.+)/i)
+        if (match) {
+            if (match[1]) {
+                return new vscode.Location(Uri.file(`${this.env}\\${match[2]}.MML`), new Position(0, 0))
+            } else if (match[3]) {
+                return new vscode.Location(Uri.file(`${this.env}\\${match[4]}`), new Position(0, 0))
             }
         }
-        if (!instrumentMatch) return
 
-        return new vscode.Location((ffFile.uri), new vscode.Position(index!, 0))
+        let range = document.getWordRangeAtPosition(position, /(?<!^\S*)@+\d+/)
+        if (range) {
+            const token = document.getText(range)
+            const tail = token.match(/\d+/)!
+            const identifier = Number(tail) + (token.length - tail.toString().length - 1) * 128
+
+            const mmlDoc = MMLDocument.fromTextDoc(document)
+            return this.findInstrumentDefinition(mmlDoc, identifier.toString(), 'Current')?.location
+        }
+
+        range = document.getWordRangeAtPosition(position, /(?<!\|)!\S+/)
+        if (range) {
+            const token = document.getText(range)
+            const mmlDoc = MMLDocument.fromTextDoc(document)
+            return this.findVariableDefinition(mmlDoc, token, 'Current')?.location
+        }
     }
 
     provideHover(document: TextDocument, position: Position, _token: vscode.CancellationToken)
         : vscode.ProviderResult<vscode.Hover> {
         if (!this.isEnvSet) return
 
-        const range = document.getWordRangeAtPosition(position, /@\d+/)
+        let range = document.getWordRangeAtPosition(position, /(?<!^\S*)@+\d+/)
+        if (range) {
+            const token = document.getText(range)
+            const tail = token.match(/\d+/)!
+            const identifier = Number(tail) + (token.length - tail.toString().length - 1) * 128
 
-        if (!range) return
+            const line = document.lineAt(position.line).text
+            if (line.match(/^[GHI]/)) {
+                const instrumentName = resolveSSGEnvelope(identifier)
+                if (!instrumentName) return
 
-        const token = document.getText(range)
-        const identifier = token.substring(1)
+                const md = new vscode.MarkdownString(`@${identifier} -> **${instrumentName}** *from SSG Software Envelope*`)
+                md.isTrusted = true
+                return new vscode.Hover(md)
+            } else if (line.match(/^R/)) {
+                const instrumentName = resolveSSGDrum(identifier)
+                if (!instrumentName) return
 
-        const textLine = document.lineAt(position.line)
-        if (textLine.text.match(/^R/)) {
-            const instrumentName = resolveSSGDrum(Number(identifier))
-            if (!instrumentName) return
+                const md = new vscode.MarkdownString(`@${identifier} -> **${instrumentName}** *from SSG Rhythm Definition*`)
+                md.isTrusted = true
+                return new vscode.Hover(md)
+            } else {
+                const mmlDoc = MMLDocument.fromTextDoc(document)
+                const result = this.findInstrumentDefinition(mmlDoc, identifier.toString(), 'Current')
+                if (!result) return
 
-            const md = new vscode.MarkdownString(`${token} -> **${instrumentName}** *from SSG Rhythm Definition*`)
-            md.isTrusted = true
-            return new vscode.Hover(md)
-        } else {
-            const mmlDoc = MMLDocument.fromTextDoc(document/*, position*/)
-            const ffFileName = this.findLastFFFile(mmlDoc)
-            if (!ffFileName) return
-
-            const ffFile = this.getOrSetFFFile(ffFileName)
-            let match
-            for (const line of ffFile.lines) {
-                match = line.match(new RegExp(`@0*${identifier}\\s+(.+)`))
-                if (match) break
+                const md = new vscode.MarkdownString(`@${identifier} -> **${result.definition.trim()}** *from ${result.fileName}*`)
+                md.isTrusted = true
+                return new vscode.Hover(md)
             }
-            if (!match) return
+        }
 
-            const md = new vscode.MarkdownString(`${token} -> **${match[1]}** *from ${ffFileName}*`)
+        range = document.getWordRangeAtPosition(position, /(?<!\|)!\S+/)
+        if (range) {
+            const token = document.getText(range)
+            const mmlDoc = MMLDocument.fromTextDoc(document)
+            const result = this.findVariableDefinition(mmlDoc, token, 'Current')
+            if (!result) return
+
+            const md = new vscode.MarkdownString(`${token} -> **${result.definition.trim()}** *from ${result.fileName}*`)
             md.isTrusted = true
             return new vscode.Hover(md)
         }
