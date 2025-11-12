@@ -31,7 +31,9 @@ export function updateDecorations(editor: vscode.TextEditor, config: vscode.Work
     const text = doc.getText()
 
     for (let i = 1; i <= DECORATION_COUNT; i++) {
-        const pattern = config.get<string>(`pmdmml-syntax.pattern${i}`)
+        const pattern = config.get<string>(`pmdmml-syntax.pattern${i}`)?.
+            replaceAll("\\d+", "(?:\\d+|\\$[0-9A-Fa-f]+)").
+            replaceAll("\\d*", "(?:\\d+|\\$[0-9A-Fa-f]+)?")
         if (!pattern) continue
         if (!decorations[i]) continue
 

@@ -3,14 +3,14 @@ import { exec, execFile } from 'child_process'
 import path from 'path'
 import os from 'os'
 
-import { InstrumentProvider } from './syntax'
+import { convertMMLNumber, MMLDefinitionProvider } from './syntax'
 import { createDecorations, updateDecorations } from './decoration'
 
 export function activate(context: vscode.ExtensionContext) {
 	const config = vscode.workspace.getConfiguration()
 	createDecorations(config)
 
-	const instrumentProvider = new InstrumentProvider()
+	const instrumentProvider = new MMLDefinitionProvider()
 	context.subscriptions.push(
 		vscode.commands.registerCommand('pmdmml-syntax.compile', async () => {
 			const config = vscode.workspace.getConfiguration('pmdmml-syntax')
@@ -29,6 +29,46 @@ export function activate(context: vscode.ExtensionContext) {
 
 			await vscode.window.activeTextEditor?.document.save()
 			exec(`"${batchPath}" "${path.basename(editor.document.uri.fsPath)}"`, execHandler)
+		}),
+		vscode.commands.registerCommand('pmdmml-syntax.convertNum', async () => {
+			const editor = vscode.window.activeTextEditor
+			if (!editor) return
+
+			const range = editor.document.getWordRangeAtPosition(editor.selection.active, /\d+|\$[0-9A-Fa-f]+/)
+			if (!range) return
+
+			const match = editor.document.getText(range).match(/(\d+)|\$([0-9A-Fa-f]+)/)
+			if (!match) return
+
+			const result = match[1] ? `$${Number(match[1]).toString(16)}` : `${parseInt(match[2], 16)}`
+			const input = await vscode.window.showInputBox({
+				prompt: 'Convert number radix or get sum',
+				value: result
+			})
+			if (!input) return
+
+			let final = input
+			if (input.includes('+')) {
+				const terms = input.split('+')
+				let sum = 0
+				terms.forEach(str => {
+					const num = convertMMLNumber(str)
+					if (num) {
+						sum += num
+					} else {
+						throw new Error()
+					}
+				})
+				if (terms.length == 0) {
+					throw new Error()
+				} else {
+					final = terms[0].trim()[0] === '$' ? `$${sum.toString(16)}` : `${sum}`
+				}
+			}
+
+			const edit = new vscode.WorkspaceEdit()
+			edit.replace(editor.document.uri, range, final)
+			await vscode.workspace.applyEdit(edit)
 		}),
 		vscode.languages.registerDefinitionProvider(
 			{ language: "pmdmml" },
@@ -50,7 +90,7 @@ export function activate(context: vscode.ExtensionContext) {
 			if (editor && e.document === editor.document) updateDecorations(editor, config)
 		})
 	)
-	if (os.platform() == "win32") {
+	if (os.platform() === "win32") {
 		context.subscriptions.push(
 			vscode.commands.registerCommand('pmdmml-syntax.runTool', () => {
 				const exePath = path.join(context.extensionPath, "bin", "TimbreTrial.exe")

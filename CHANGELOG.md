@@ -1,5 +1,11 @@
 # Change Log
 
+### 1.0.7
+
+* Enhanced support for hexadecimal numbers.
+* Grammar regular expressions no longer need to manually match decimal and hexadecimal respectively. `\d+` and `\d*` will be uniformly replaced with `(?:\\d+|\\$[0-9A-Fa-f]+)` and `(?:\d+|\$[0-9A-Fa-f]+)?`.
+* Makes more accurate matches to the definitions of MML variables.
+
 ### 1.0.6
 
 * Enhanced syntax highlighting.

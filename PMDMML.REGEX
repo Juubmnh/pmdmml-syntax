@@ -224,7 +224,7 @@ A\d+
 
 # 3.2. MML Variable Definition
 # 16.1. Defined Variable Utilization
-(?<!\|)!\S+
+(?<!\|)!(?:\d+|\S+)
 
 # 16.2. MML Skip Control 1
 "
