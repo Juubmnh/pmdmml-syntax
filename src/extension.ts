@@ -6,6 +6,18 @@ import os from 'os'
 import { convertMMLNumber, MMLDefinitionProvider } from './syntax'
 import { createDecorations, updateDecorations } from './decoration'
 
+export function getEnv() {
+    const config = vscode.workspace.getConfiguration('pmdmml-syntax')
+
+    const batchPath = config.get<string>('batchPath')
+    if (!batchPath) {
+        vscode.window.showErrorMessage('Please set pmdmml-syntax.batchPath in settings.')
+        return null
+    }
+
+    return path.dirname(batchPath)
+}
+
 export function activate(context: vscode.ExtensionContext) {
 	const config = vscode.workspace.getConfiguration()
 	createDecorations(config)

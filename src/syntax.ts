@@ -1,6 +1,8 @@
-import vscode from 'vscode'
+import vscode, { Location } from 'vscode'
 import path from 'path'
 import fs from 'fs'
+
+import { getEnv } from './extension'
 
 const SSG_ENVELOPE_MAPPING = [
     'E0,0,0,0	Default',
@@ -15,7 +17,7 @@ const SSG_ENVELOPE_MAPPING = [
     'E1,2,24,1	Brass type 2'
 ]
 
-function resolveSSGEnvelope(id: number) {
+export function resolveSSGEnvelope(id: number) {
     if (id < 0 || id > 9) return null
     return SSG_ENVELOPE_MAPPING[id]
 }
@@ -34,7 +36,7 @@ const SSG_DRUM_MAPPING = [
     'Ride Cymbal'
 ]
 
-function resolveSSGDrum(id: number) {
+export function resolveSSGDrum(id: number) {
     if (id < 0 || id > 1024) return null
     const result = []
     for (let i = 0; id > 0; i++) {
@@ -52,7 +54,7 @@ export function convertMMLNumber(str: string) {
     return null
 }
 
-class MMLDocument {
+export class MMLDocument {
     uri: vscode.Uri
     lines: string[]
     pos: vscode.Position
@@ -104,13 +106,15 @@ class MMLDocument {
     }
 }
 
-class DefinitionDesc {
+export class DefinitionDesc {
+    line: string
     definition: string
     fileName: string
     location: vscode.Location
     perfectMatch: boolean
 
-    constructor(defnition: string, fileName: string, location: vscode.Location, perfectMatch: boolean) {
+    constructor(line: string, defnition: string, fileName: string, location: vscode.Location, perfectMatch: boolean) {
+        this.line = line
         this.definition = defnition
         this.fileName = fileName
         this.location = location
@@ -118,161 +122,151 @@ class DefinitionDesc {
     }
 }
 
+export function findInstrumentDefinition(env: string, document: MMLDocument, token: string, fileName: string, upper: number = 0, visited = new Set<string>())
+    : DefinitionDesc | null {
+    const key = document.uri.path.toUpperCase()
+    if (visited.has(key)) return null
+    visited.add(key)
+
+    for (let line = document.pos.line; line >= upper; line--) {
+        const text = document.lineAt(line);
+        let match = text.match(new RegExp(`^@\\s*0*${token}\\s+(.+)`))
+        if (match) {
+            return {
+                line: match[0],
+                definition: match[1],
+                fileName: path.basename(document.uri.fsPath, path.extname(document.uri.fsPath)),
+                location: new vscode.Location(document.uri, new vscode.Position(line, 0)),
+                perfectMatch: true
+            }
+        }
+
+        match = text.match(/^#(FFFile)\s+(.+)\.FFL?|^#(Include)\s+(.+)/i)
+        if (match) {
+            if (match[1]) {
+                const ffFile = MMLDocument.fromPath(`${env}\\${match[2]}.MML`)
+                let instrumentMatch, index
+                for (let i = 0; i < ffFile.lineCount; i++) {
+                    instrumentMatch = ffFile.lines[i].match(new RegExp(`^@\\s*0*${token}\\s+(.+)`))
+                    if (instrumentMatch) {
+                        index = i
+                        break
+                    }
+                }
+                if (!instrumentMatch) continue
+
+                return {
+                    line: instrumentMatch[0],
+                    definition: instrumentMatch[1],
+                    fileName: match[2],
+                    location: new vscode.Location(ffFile.uri, new vscode.Position(index!, 0)),
+                    perfectMatch: true
+                }
+            } else if (match[3]) {
+                const nextDoc = MMLDocument.fromPath(`${env}\\${match[4]}`)
+                const result = findInstrumentDefinition(env, nextDoc, token, match[4], 0, visited)
+                if (result) return result
+            }
+        }
+    }
+
+    return null
+}
+
+function findPossibleVarDefinitions(env: string, document: MMLDocument, token: number | string, fileName: string): DefinitionDesc[];
+function findPossibleVarDefinitions(env: string, document: MMLDocument, token: number | string, fileName: string, upper: number): DefinitionDesc[];
+function findPossibleVarDefinitions(env: string, document: MMLDocument, token: number | string, fileName: string, upper: number, visited: Set<string>): DefinitionDesc[];
+
+function findPossibleVarDefinitions(env: string, document: MMLDocument, token: number | string, fileName: string, upper: number = 0, visited: Set<string> = new Set())
+    : DefinitionDesc[] {
+    const key = document.uri.path.toUpperCase()
+    if (visited.has(key)) return []
+    visited.add(key)
+
+    let array: DefinitionDesc[] = []
+    for (let line = document.pos.line; line >= upper; line--) {
+        const text = document.lineAt(line);
+        const match = text.match(/^(?<!\|)!(?:(\d+|\$[0-9A-Fa-f]+)|(\S+))\s*(.*)/)
+        if (match) {
+            if (typeof token === "number") {
+                if (match[1] && token === convertMMLNumber(match[1])) {
+                    return [{
+                        line: match[0],
+                        definition: match[3],
+                        fileName: fileName,
+                        location: new vscode.Location(document.uri, new vscode.Position(line, 0)),
+                        perfectMatch: true
+                    }]
+                }
+                continue
+            } else {
+                if (token === match[2]) {
+                    return [{
+                        line: match[0],
+                        definition: match[3],
+                        fileName: fileName,
+                        location: new vscode.Location(document.uri, new vscode.Position(line, 0)),
+                        perfectMatch: true
+                    }]
+                }
+                else if (token.includes(match[2])) {
+                    array.push({
+                        line: match[0],
+                        definition: match[3],
+                        fileName: fileName,
+                        location: new vscode.Location(document.uri, new vscode.Position(line, 0)),
+                        perfectMatch: false
+                    })
+                }
+            }
+        } else {
+            const includeMatch = text.match(/^#Include\s+(.+)/i)
+            if (!includeMatch) continue
+
+            const nextDoc = MMLDocument.fromPath(`${env}\\${includeMatch[1]}`)
+            const result = findPossibleVarDefinitions(env, nextDoc, token, includeMatch[1], 0, visited)
+            if (result.length > 0) {
+                if (result[result.length - 1].perfectMatch) return result
+                else array = array.concat(result)
+            }
+        }
+    }
+
+    return array
+}
+
+export function findVarDefinition(env: string, document: MMLDocument, token: number | string, fileName: string) {
+    const previous = findPossibleVarDefinitions(env, document, token, fileName)
+    if (previous.length > 0 && previous[previous.length - 1].perfectMatch)
+        return previous[previous.length - 1]
+
+    const subsequent = findPossibleVarDefinitions(env, document, token, fileName, document.pos.line + 1)
+    if (subsequent.length > 0 && subsequent[subsequent.length - 1].perfectMatch)
+        return subsequent[subsequent.length - 1]
+
+    const union = previous.concat(subsequent)
+    if (union.length === 0) return null
+
+    let maxSimilars: DefinitionDesc[] = [union[0]]
+    union.forEach(desc => {
+        if (desc.definition.length === maxSimilars[0].definition.length) {
+            maxSimilars.push(desc)
+        } else if (desc.definition.length > maxSimilars[0].definition.length) {
+            maxSimilars = []
+            maxSimilars.push(desc)
+        }
+    })
+    if (maxSimilars.length === 0) return null
+    return maxSimilars[0]
+}
+
 export class MMLDefinitionProvider implements vscode.HoverProvider, vscode.DefinitionProvider {
     onDidChangeInlayHints?: vscode.Event<void> | undefined
 
-    get env(): string {
-        const config = vscode.workspace.getConfiguration('pmdmml-syntax')
-
-        const batchPath = config.get<string>('batchPath')
-        if (!batchPath) {
-            vscode.window.showErrorMessage('Please set pmdmml-syntax.batchPath in settings.')
-            throw new Error('Configuration not set.')
-        }
-
-        return path.dirname(batchPath)
-    }
-    get isEnvSet(): boolean {
-        const config = vscode.workspace.getConfiguration('pmdmml-syntax')
-        return config.get<string>('batchPath') !== null
-    }
-
-    findInstrumentDefinition(document: MMLDocument, token: string, fileName: string, upper: number = 0, visited = new Set<string>())
-        : DefinitionDesc | null {
-        const key = document.uri.path.toUpperCase()
-        if (visited.has(key)) return null
-        visited.add(key)
-
-        for (let line = document.pos.line; line >= upper; line--) {
-            const text = document.lineAt(line);
-            let match = text.match(new RegExp(`^@\\s*0*${token}\\s+(.+)`))
-            if (match) {
-                return {
-                    definition: match[1],
-                    fileName: path.basename(document.uri.fsPath, path.extname(document.uri.fsPath)),
-                    location: new vscode.Location(document.uri, new vscode.Position(line, 0)),
-                    perfectMatch: true
-                }
-            }
-
-            match = text.match(/^#(FFFile)\s+(.+)\.FFL?|^#(Include)\s+(.+)/i)
-            if (match) {
-                if (match[1]) {
-                    const ffFile = MMLDocument.fromPath(`${this.env}\\${match[2]}.MML`)
-                    let instrumentMatch, index
-                    for (let i = 0; i < ffFile.lineCount; i++) {
-                        instrumentMatch = ffFile.lines[i].match(new RegExp(`^@\\s*0*${token}\\s+(.+)`))
-                        if (instrumentMatch) {
-                            index = i
-                            break
-                        }
-                    }
-                    if (!instrumentMatch) continue
-
-                    return {
-                        definition: instrumentMatch[1],
-                        fileName: match[2],
-                        location: new vscode.Location(ffFile.uri, new vscode.Position(index!, 0)),
-                        perfectMatch: true
-                    }
-                } else if (match[3]) {
-                    const nextDoc = MMLDocument.fromPath(`${this.env}\\${match[4]}`)
-                    const result = this.findInstrumentDefinition(nextDoc, token, match[4], 0, visited)
-                    if (result) return result
-                }
-            }
-        }
-
-        return null
-    }
-
-    findPossibleVarDefinitions(document: MMLDocument, token: number | string, fileName: string): DefinitionDesc[];
-    findPossibleVarDefinitions(document: MMLDocument, token: number | string, fileName: string, upper: number): DefinitionDesc[];
-    findPossibleVarDefinitions(document: MMLDocument, token: number | string, fileName: string, upper: number, visited: Set<string>): DefinitionDesc[];
-
-    findPossibleVarDefinitions(document: MMLDocument, token: number | string, fileName: string, upper: number = 0, visited: Set<string> = new Set())
-        : DefinitionDesc[] {
-        const key = document.uri.path.toUpperCase()
-        if (visited.has(key)) return []
-        visited.add(key)
-
-        let array: DefinitionDesc[] = []
-        for (let line = document.pos.line; line >= upper; line--) {
-            const text = document.lineAt(line);
-            const match = text.match(/^(?<!\|)!(?:(\d+|\$[0-9A-Fa-f]+)|(\S+))\s*(.*)/)
-            if (match) {
-                if (typeof token === "number") {
-                    if (match[1] && token === convertMMLNumber(match[1])) {
-                        return [{
-                            definition: match[3],
-                            fileName: fileName,
-                            location: new vscode.Location(document.uri, new vscode.Position(line, 0)),
-                            perfectMatch: true
-                        }]
-                    }
-                    continue
-                } else {
-                    if (token === match[2]) {
-                        return [{
-                            definition: match[3],
-                            fileName: fileName,
-                            location: new vscode.Location(document.uri, new vscode.Position(line, 0)),
-                            perfectMatch: true
-                        }]
-                    }
-                    else if (token.includes(match[2])) {
-                        array.push({
-                            definition: match[3],
-                            fileName: fileName,
-                            location: new vscode.Location(document.uri, new vscode.Position(line, 0)),
-                            perfectMatch: false
-                        })
-                    }
-                }
-            } else {
-                const includeMatch = text.match(/^#Include\s+(.+)/i)
-                if (!includeMatch) continue
-
-                const nextDoc = MMLDocument.fromPath(`${this.env}\\${includeMatch[1]}`)
-                const result = this.findPossibleVarDefinitions(nextDoc, token, includeMatch[1], 0, visited)
-                if (result.length > 0) {
-                    if (result[result.length - 1].perfectMatch) return result
-                    else array = array.concat(result)
-                }
-            }
-        }
-
-        return array
-    }
-
-    findVarDefinition(document: MMLDocument, token: number | string, fileName: string) {
-        const previous = this.findPossibleVarDefinitions(document, token, fileName)
-        if (previous.length > 0 && previous[previous.length - 1].perfectMatch)
-            return previous[previous.length - 1]
-
-        const subsequent = this.findPossibleVarDefinitions(document, token, fileName, document.pos.line + 1)
-        if (subsequent.length > 0 && subsequent[subsequent.length - 1].perfectMatch)
-            return subsequent[subsequent.length - 1]
-
-        const union = previous.concat(subsequent)
-        if (union.length === 0) return null
-
-        let maxSimilars: DefinitionDesc[] = [union[0]]
-        union.forEach(desc => {
-            if (desc.definition.length === maxSimilars[0].definition.length) {
-                maxSimilars.push(desc)
-            } else if (desc.definition.length > maxSimilars[0].definition.length) {
-                maxSimilars = []
-                maxSimilars.push(desc)
-            }
-        })
-        if (maxSimilars.length === 0) return null
-        return maxSimilars[0]
-    }
-
     provideDefinition(document: vscode.TextDocument, position: vscode.Position, _token: vscode.CancellationToken)
         : vscode.ProviderResult<vscode.Definition | vscode.DefinitionLink[]> {
-        if (!this.isEnvSet) return
+        const env = getEnv()
+        if (!env) return
 
         const line = document.lineAt(position.line).text
         if (line.match(/^[GHIR]/)) return
@@ -280,33 +274,44 @@ export class MMLDefinitionProvider implements vscode.HoverProvider, vscode.Defin
         const match = line.match(/^#(FFFile)\s+(.+)\.FFL?|^#(Include)\s+(.+)/i)
         if (match) {
             if (match[1]) {
-                return new vscode.Location(vscode.Uri.file(`${this.env}\\${match[2]}.MML`), new vscode.Position(0, 0))
+                return new vscode.Location(vscode.Uri.file(`${env}\\${match[2]}.MML`), new vscode.Position(0, 0))
             } else if (match[3]) {
-                return new vscode.Location(vscode.Uri.file(`${this.env}\\${match[4]}`), new vscode.Position(0, 0))
+                return new vscode.Location(vscode.Uri.file(`${env}\\${match[4]}`), new vscode.Position(0, 0))
             }
         }
 
-        let range = document.getWordRangeAtPosition(position, /(?<!^\S*)@+(?:\d+|\$[0-9A-Fa-f]+)/)
+        let range = document.getWordRangeAtPosition(position, /^@(?:\s*\d+){3}(?:\s*=.*)?$/)
+        if (range) {
+            return new Location(document.uri, range.start)
+        }
+
+        range = document.getWordRangeAtPosition(position, /(?<!^\S*)@+(?:\d+|\$[0-9A-Fa-f]+)/)
         if (range) {
             const token = document.getText(range)
             const match = token.match(/(@+)(\d+|\$[0-9A-Fa-f]+)/)!
             const identifier = (match[1].length - 1) * 128 + convertMMLNumber(match[2])!
 
             const mmlDoc = MMLDocument.fromTextDoc(document)
-            return this.findInstrumentDefinition(mmlDoc, identifier.toString(), 'Current')?.location
+            return findInstrumentDefinition(env, mmlDoc, identifier.toString(), 'Current')?.location
+        }
+
+        range = document.getWordRangeAtPosition(position, /^(?<!\|)!(?:(?:\d+|\$[0-9A-Fa-f]+)|\S+)/)
+        if (range) {
+            return new Location(document.uri, range.start)
         }
 
         range = document.getWordRangeAtPosition(position, /(?<!^\S*)(?<!\|)!(?:(?:\d+|\$[0-9A-Fa-f]+)|\S+)/)
         if (range) {
             const match = document.getText(range).match(/!(?:(\d+|\$[0-9A-Fa-f]+)|(\S+))/)!
             const mmlDoc = MMLDocument.fromTextDoc(document, position)
-            return this.findVarDefinition(mmlDoc, match[1] ? convertMMLNumber(match[1])! : match[2], 'Current')?.location
+            return findVarDefinition(env, mmlDoc, match[1] ? convertMMLNumber(match[1])! : match[2], 'Current')?.location
         }
     }
 
     provideHover(document: vscode.TextDocument, position: vscode.Position, _token: vscode.CancellationToken)
         : vscode.ProviderResult<vscode.Hover> {
-        if (!this.isEnvSet) return
+        const env = getEnv()
+        if (!env) return
 
         let range = document.getWordRangeAtPosition(position, /(?<!^\S*)@+(?:\d+|\$[0-9A-Fa-f]+)/)
         if (range) {
@@ -331,7 +336,7 @@ export class MMLDefinitionProvider implements vscode.HoverProvider, vscode.Defin
                 return new vscode.Hover(md)
             } else {
                 const mmlDoc = MMLDocument.fromTextDoc(document)
-                const result = this.findInstrumentDefinition(mmlDoc, identifier.toString(), 'Current')
+                const result = findInstrumentDefinition(env, mmlDoc, identifier.toString(), 'Current')
                 if (!result) return
 
                 const md = new vscode.MarkdownString(`@${identifier} -> **${result.definition.trim()}** *from ${result.fileName}*`)
@@ -344,10 +349,10 @@ export class MMLDefinitionProvider implements vscode.HoverProvider, vscode.Defin
         if (range) {
             const match = document.getText(range).match(/!(?:(\d+|\$[0-9A-Fa-f]+)|(\S+))/)!
             const mmlDoc = MMLDocument.fromTextDoc(document, position)
-            const result = this.findVarDefinition(mmlDoc, match[1] ? convertMMLNumber(match[1])! : match[2], 'Current')
+            const result = findVarDefinition(env, mmlDoc, match[1] ? convertMMLNumber(match[1])! : match[2], 'Current')
             if (!result) return
 
-            const md = new vscode.MarkdownString(`!${match[1] ? convertMMLNumber(match[1]) : match[2]} -> **${result.definition.trim()}** *from ${result.fileName}*`)
+            const md = new vscode.MarkdownString(`!${match[1] ? convertMMLNumber(match[1]) : result.line.match(/(?<=!)\S+/)} -> **${result.definition.trim()}** *from ${result.fileName}*`)
             md.isTrusted = true
             return new vscode.Hover(md)
         }

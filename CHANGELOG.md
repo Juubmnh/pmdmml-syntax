@@ -1,5 +1,10 @@
 # Change Log
 
+### 1.0.8
+
+* Enhanced support for variables.
+* regex bug fixed.
+
 ### 1.0.7
 
 * Enhanced support for hexadecimal numbers.

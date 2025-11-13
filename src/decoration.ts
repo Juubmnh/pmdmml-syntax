@@ -1,5 +1,8 @@
 import vscode from 'vscode'
 
+import { getEnv } from './extension'
+import { MMLDocument, convertMMLNumber, findVarDefinition } from './syntax'
+
 const DECORATION_COUNT = 6
 let decorations: Array<vscode.TextEditorDecorationType | null> = new Array(DECORATION_COUNT)
 
@@ -39,6 +42,22 @@ export function updateDecorations(editor: vscode.TextEditor, config: vscode.Work
 
         const ranges: vscode.Range[] = []
         for (const match of text.matchAll(new RegExp(pattern, 'gm'))) {
+            const varDef = match[0].match(/(?<!\|)!(\D\S*)/)
+            if (varDef) {
+                const env = getEnv()
+                if (!env) continue
+
+                const mmlDoc = MMLDocument.fromTextDoc(doc, doc.positionAt(match.index!))
+                const desc = findVarDefinition(env, mmlDoc, varDef[1], 'Current')
+                if (desc) {
+                    const final = desc.line.match(/(!\S+).*/)![1]
+                    const index = match[0].indexOf(final)
+                    const start = doc.positionAt(match.index! +index)
+                    const end = doc.positionAt(match.index! + index + final.length)
+                    ranges.push(new vscode.Range(start, end))
+                }
+                continue
+            }
             const start = doc.positionAt(match.index!)
             const end = doc.positionAt(match.index! + match[0].length)
             ranges.push(new vscode.Range(start, end))
