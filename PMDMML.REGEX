@@ -16,7 +16,7 @@
 
 # 1.3. Numerical Notation Methods
 # 4.1. Pitch Interval/Duration Setting
-(?:[cdefgab]=?[+-]?|x)\d*\.*
+(?:[cdefgab]=?[+-]*|x)\d*\.*
 
 # 4.2. Rest/Duration Setting
 r\d*\.*
