@@ -3,7 +3,7 @@
   "displayName": "PMDMML-Syntax",
   "icon": "icon.png",
   "description": "Provides syntax highlighting for M.Kajihara's Professional Music Driver MML",
-  "version": "1.0.10",
+  "version": "1.0.12",
   "publisher": "Juubmnh",
   "repository": "https://github.com/Juubmnh/pmdmml-syntax",
   "license": "MIT",
@@ -59,7 +59,7 @@
           },
           "pmdmml-syntax.pattern6": {
             "type": "string",
-            "default": "^(?:(?:\\s+|,)\\d+)+|(?<!^\\S*)(?:o[+-]?\\d+|X|l%?\\d+\\.*|l(?:[=+-]?\\d+\\.*|\\^\\d+)|C\\d+|Q%?\\d+|q(?:\\d*|l\\d+\\.*)?(?:-(?:\\d*|l\\d+)?)?(?:,(?:\\d+|l\\d+\\.*))?|__?[+-]\\d+|_{[+\\-=][cdefgab\\s]*}|_M[+-]\\d+|v[+\\-)(]?\\d+|V\\d+|[)(]\\^?%?\\d*|s\\d+|O\\d+,[+-]?\\d+|FB[+-]?\\d+|P\\d+|w[+-]?\\d+|DD?[+-]?\\d+|sdd?\\d+,[+-]?\\d+|DX\\d+|B\\d+|I[+-]?\\d+|DM[+-]?\\d+|E\\d+(?:,[+-]?\\d+(?:,\\d+){2}|(?:,\\d+){4,5})|EX\\d+|M[AB]?(?:\\d+|l\\d+\\.*)(?:(?:,\\d+)(?:,[+-]?\\d+)(?:,\\d+))?|MW[AB]?\\d+|\\*\\d+(?:,\\d+)?|\\*A\\d+(?:,B?\\d+)?|\\*B\\d+(?:,A\\d+)?|MM[AB]?\\d+|MX[AB]?\\d+|MP[AB]?[+-]\\d+(?:,(?:\\d+|l\\d+\\.*)(?:,\\d+)?)?|MD[AB]?\\d+(?:,[+-]\\d+(?:,\\d+)?)?|H\\d+(?:,\\d+)?(?:,(?:\\d+|l\\d+\\.*))?|#\\d+(?:,\\d+)?|##\\d+,\\d+,[+-]\\d+,\\d+|#[fwa]\\d+|#p[+-]\\d+|#D(?:\\d+|l\\d+\\.*)|t[+-]?\\d+|T[+-]?\\d+|S(?:\\d+|l\\d+\\.*)(?:,[+-]\\d+(?:,\\d+)?)?|W(?:\\d+|l\\d+\\.*)(?:,%?[+-]\\d+(?:,\\d+)?)?|sk\\d+(?:,(?:\\d+|l\\d+\\.*))?|{{(?:(?:o\\d+|[<>\\s])*[cdefgab]){1,16}(?:o\\d+|[<>\\s])*}}\\d*\\.*(?:,\\d+(?:,\\d+(?:,\\d+(?:,[+-]\\d+)?)?)?)?|p\\d+|px[+-]\\d+(?:,\\d+)?|\\\\[bschti]p?|\\\\V[+-]?\\d+|\\\\v[bschti][+-]?\\d+|\\\\[lmr][bschti]|y\\d+,\\d+|\\*\\d+|D\\d+|D[FSPR][+-]?\\d+|N\\d+|n\\d+|m\\d+|Z\\d+|A\\d+)|\\s(?:[=+-]?\\d+\\.*|\\^\\d+)"
+            "default": "^(?:(?:\\s+|,)\\d+)+|(?<!^\\S*)(?:o[+-]?\\d+|X|l%?\\d+\\.*|l(?:[=+-]?\\d+\\.*|\\^\\d+)|C\\d+|Q%?\\d+|q(?:\\d*|l\\d+\\.*)?(?:-(?:\\d*|l\\d+)?)?(?:,(?:\\d+|l\\d+\\.*))?|__?[+-]\\d+|_{[+\\-=][cdefgab\\s]*}|_M[+-]\\d+|v[+\\-)(]?\\d+|V\\d+|[)(]\\^?%?\\d*|s\\d+|O\\d+,[+-]?\\d+|FB[+-]?\\d+|P\\d+|w[+-]?\\d+|DD?[+-]?\\d+|sdd?\\d+,[+-]?\\d+|DX\\d+|B\\d+|I[+-]?\\d+|DM[+-]?\\d+|E\\d+(?:,[+-]?\\d+(?:,\\d+){2}|(?:,\\d+){4,5})|EX\\d+|M[AB]?(?:\\d+|l\\d+\\.*)(?:(?:,\\d+)(?:,[+-]?\\d+)(?:,\\d+))?|MW[AB]?\\d+|\\*\\d+(?:,\\d+)?|\\*A\\d+(?:,B?\\d+)?|\\*B\\d+(?:,A\\d+)?|MM[AB]?\\d+|MX[AB]?\\d+|MP[AB]?[+-]?\\d+(?:,(?:\\d+|l\\d+\\.*)(?:,\\d+)?)?|MD[AB]?\\d+(?:,[+-]?\\d+(?:,\\d+)?)?|H\\d+(?:,\\d+)?(?:,(?:\\d+|l\\d+\\.*))?|#\\d+(?:,\\d+)?|##\\d+,\\d+,[+-]?\\d+,\\d+|#[fwa]\\d+|#p[+-]?\\d+|#D(?:\\d+|l\\d+\\.*)|t[+-]?\\d+|T[+-]?\\d+|S(?:\\d+|l\\d+\\.*)(?:,[+-]?\\d+(?:,\\d+)?)?|W(?:\\d+|l\\d+\\.*)(?:,%?[+-]?\\d+(?:,\\d+)?)?|sk\\d+(?:,(?:\\d+|l\\d+\\.*))?|{{(?:(?:o\\d+|[<>\\s])*[cdefgab]){1,16}(?:o\\d+|[<>\\s])*}}\\d*\\.*(?:,\\d+(?:,\\d+(?:,\\d+(?:,[+-]?\\d+)?)?)?)?|p\\d+|px[+-]?\\d+(?:,\\d+)?|\\\\[bschti]p?|\\\\V[+-]?\\d+|\\\\v[bschti][+-]?\\d+|\\\\[lmr][bschti]|y\\d+,\\d+|\\*\\d+|D\\d+|D[FSPR][+-]?\\d+|N\\d+|n\\d+|m\\d+|Z\\d+|A\\d+)|\\s(?:[=+-]?\\d+\\.*|\\^\\d+)"
           },
           "pmdmml-syntax.style1": {
             "type": "string",
@@ -84,6 +84,19 @@
           "pmdmml-syntax.style6": {
             "type": "string",
             "default": "#76946A"
+          },
+          "pmdmml-syntax.immediatelyConvert": {
+            "type": "boolean",
+            "description": "Use the current .MML file name with .abc extension as the output file name without asking when exporting to ABC Notation no matter exists or not",
+            "default": false
+          },
+          "pmdmml-syntax.abcSharpStyle": {
+            "type": "boolean",
+            "default": true
+          },
+          "pmdmml-syntax.abcUnitNoteLength": {
+            "type": "string",
+            "default": "1/4"
           }
         }
       }
@@ -98,6 +111,10 @@
         "title": "Convert Number"
       },
       {
+        "command": "pmdmml-syntax.exportToABC",
+        "title": "PMDMML: Export to ABC Notation"
+      },
+      {
         "command": "pmdmml-syntax.runTool",
         "title": "Run Timbre Trial"
       }
@@ -105,6 +122,7 @@
     "keybindings": [
       {
         "command": "pmdmml-syntax.compile",
+        "key": "ctrl+s",
         "win": "ctrl+s",
         "linux": "ctrl+s",
         "mac": "cmd+s",
@@ -112,6 +130,7 @@
       },
       {
         "command": "pmdmml-syntax.convertNum",
+        "key": "f2",
         "win": "f2",
         "linux": "f2",
         "mac": "f2",
@@ -124,11 +143,16 @@
           "command": "pmdmml-syntax.compile",
           "group": "navigation",
           "when": "editorTextFocus && resourceExtname =~ /\\.mml/i"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "pmdmml-syntax.exportToABC",
+          "when": "resourceExtname =~ /\\.mml/i"
         },
         {
           "command": "pmdmml-syntax.runTool",
-          "group": "navigation",
-          "when": "editorTextFocus && resourceExtname =~ /\\.mml/i && isWindows"
+          "when": "resourceExtname =~ /\\.mml/i && isWindows"
         }
       ]
     }
@@ -142,14 +166,18 @@
     "test": "vscode-test"
   },
   "devDependencies": {
-    "@types/vscode": "^1.105.0",
+    "@types/jest": "^30.0.0",
     "@types/mocha": "^10.0.10",
-    "@types/node": "22.x",
+    "@types/node": "^22.19.17",
+    "@types/vscode": "^1.105.0",
     "@typescript-eslint/eslint-plugin": "^8.45.0",
     "@typescript-eslint/parser": "^8.45.0",
-    "eslint": "^9.36.0",
-    "typescript": "^5.9.3",
     "@vscode/test-cli": "^0.0.11",
-    "@vscode/test-electron": "^2.5.2"
+    "@vscode/test-electron": "^2.5.2",
+    "eslint": "^9.36.0",
+    "typescript": "^5.9.3"
+  },
+  "dependencies": {
+    "fraction.js": "^5.3.4"
   }
 }

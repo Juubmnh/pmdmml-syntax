@@ -1,32 +1,33 @@
 import vscode from 'vscode'
 import { exec, execFile } from 'child_process'
-import path from 'path'
+import Fraction from 'fraction.js'
+import fs from 'fs'
 import os from 'os'
+import path from 'path'
 
-import { convertMMLNumber, MMLDefinitionProvider } from './syntax'
+import { convertMMLNumber, MMLDefinitionProvider, MMLDocument } from './syntax'
 import { createDecorations, updateDecorations } from './decoration'
+import { fracToString, mmlToABC, setStyle, stringToFrac } from './converter'
 
 export function getEnv() {
-    const config = vscode.workspace.getConfiguration('pmdmml-syntax')
+	const config = vscode.workspace.getConfiguration('pmdmml-syntax')
 
-    const batchPath = config.get<string>('batchPath')
-    if (!batchPath) {
-        vscode.window.showErrorMessage('Please set pmdmml-syntax.batchPath in settings.')
-        return null
-    }
+	const batchPath = config.get<string>('batchPath')
+	if (!batchPath) {
+		vscode.window.showErrorMessage('Please set pmdmml-syntax.batchPath in settings.')
+		return null
+	}
 
-    return path.dirname(batchPath)
+	return path.dirname(batchPath)
 }
 
 export function activate(context: vscode.ExtensionContext) {
-	const config = vscode.workspace.getConfiguration()
+	const config = vscode.workspace.getConfiguration('pmdmml-syntax')
 	createDecorations(config)
 
 	const instrumentProvider = new MMLDefinitionProvider()
 	context.subscriptions.push(
 		vscode.commands.registerCommand('pmdmml-syntax.compile', async () => {
-			const config = vscode.workspace.getConfiguration('pmdmml-syntax')
-
 			const batchPath = config.get<string>('batchPath')
 			if (!batchPath) {
 				vscode.window.showErrorMessage('Please set pmdmml-syntax.batchPath in settings.')
@@ -54,7 +55,7 @@ export function activate(context: vscode.ExtensionContext) {
 
 			const result = match[1] ? `$${Number(match[1]).toString(16)}` : `${parseInt(match[2], 16)}`
 			const input = await vscode.window.showInputBox({
-				prompt: 'Convert number radix or get sum',
+				prompt: 'Numbers to convert or add up',
 				value: result
 			})
 			if (!input) return
@@ -82,8 +83,52 @@ export function activate(context: vscode.ExtensionContext) {
 			edit.replace(editor.document.uri, range, final)
 			await vscode.workspace.applyEdit(edit)
 		}),
+		vscode.commands.registerCommand('pmdmml-syntax.exportToABC', async () => {
+			const editor = vscode.window.activeTextEditor
+			if (!editor) return
+
+			const filePath = editor.document.uri.fsPath
+			const defaultOutputName = path.basename(filePath, path.extname(filePath)) + '.abc'
+
+			let outputPath: string
+			if (config.get<boolean>('immediatelyConvert')) {
+				outputPath = path.join(path.dirname(filePath), defaultOutputName)
+			} else {
+				const input = await vscode.window.showInputBox({
+					prompt: 'Your ABC Notation file name',
+					value: defaultOutputName
+				})
+				if (!input) return
+
+				outputPath = path.join(path.dirname(filePath), input)
+				if (fs.existsSync(outputPath)) {
+					const overwrite = await vscode.window.showWarningMessage(`File ${input} already exists. Do you want to overwrite it?`, 'Yes', 'No')
+					if (overwrite === 'No') return
+				}
+			}
+
+			const sharpStyle = config.get<boolean>('abcSharpStyle')
+			if (sharpStyle === undefined) return null
+			setStyle(sharpStyle)
+
+			const unitLength = config.get<string>('abcUnitNoteLength')
+			if (!unitLength) return null
+
+			const unitLengthValue = stringToFrac(unitLength)
+			if (!unitLengthValue) return null
+
+			const result = mmlToABC(MMLDocument.fromTextDoc(editor.document), unitLengthValue)
+			if (!result) return
+
+			fs.writeFile(outputPath, result, { flag: 'w' }, (err) => {
+				if (err)
+				{
+					vscode.window.showErrorMessage(err.message)
+				}
+			})
+		}),
 		vscode.languages.registerDefinitionProvider(
-			{ language: "pmdmml" },
+			{ language: 'pmdmml' },
 			instrumentProvider
 		),
 		vscode.languages.registerHoverProvider(
@@ -102,10 +147,10 @@ export function activate(context: vscode.ExtensionContext) {
 			if (editor && e.document === editor.document) updateDecorations(editor, config)
 		})
 	)
-	if (os.platform() === "win32") {
+	if (os.platform() === 'win32') {
 		context.subscriptions.push(
 			vscode.commands.registerCommand('pmdmml-syntax.runTool', () => {
-				const exePath = path.join(context.extensionPath, "bin", "TimbreTrial.exe")
+				const exePath = path.join(context.extensionPath, 'bin', 'TimbreTrial.exe')
 				execFile(exePath, [], execHandler)
 			}),
 		)

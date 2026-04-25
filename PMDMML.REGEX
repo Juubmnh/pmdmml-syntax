@@ -22,7 +22,7 @@
 r\d*\.*
 
 # 4.3. Portamento Setting
-{(?:(?:o\d+|[<>\s])*[cdefgab]){2}(?:o\d+|[<>\s])*}\d*\.*(?:,\d*)?
+{(?:(?:o\d+|[<>\s])*[cdefgab]){2}(?:o\d+|[<>\s])*}%?\d*\.*(?:,%?\d+\.*)?
 
 # 4.4. Octave Setting
 # 4.7. Whole Octave Change
@@ -134,10 +134,10 @@ MM[AB]?\d+
 MX[AB]?\d+
 
 # 9.6. Dedicated Rise/Fall LFO Setting
-MP[AB]?[+-]\d+(?:,(?:\d+|l\d+\.*)(?:,\d+)?)?
+MP[AB]?[+-]?\d+(?:,(?:\d+|l\d+\.*)(?:,\d+)?)?
 
 # 9.7. LFO Depth Temporal Change Setting
-MD[AB]?\d+(?:,[+-]\d+(?:,\d+)?)?
+MD[AB]?\d+(?:,[+-]?\d+(?:,\d+)?)?
 
 # 9.10. Hardware LFO Speed/Delay Setting
 H\d+(?:,\d+)?(?:,(?:\d+|l\d+\.*))?
@@ -146,7 +146,7 @@ H\d+(?:,\d+)?(?:,(?:\d+|l\d+\.*))?
 #\d+(?:,\d+)?
 
 # 9.12. Hardware LFO Frequency/Waveform/Depth Setting (OPM)
-##\d+,\d+,[+-]\d+,\d+|#[fwa]\d+|#p[+-]\d+
+##\d+,\d+,[+-]?\d+,\d+|#[fwa]\d+|#p[+-]?\d+
 
 # 9.13. Hardware LFO Delay Setting
 #D(?:\d+|l\d+\.*)
@@ -164,22 +164,22 @@ t[+-]?\d+
 T[+-]?\d+
 
 # 12.1. Grace Note Setting
-S(?:\d+|l\d+\.*)(?:,[+-]\d+(?:,\d+)?)?
+S(?:\d+|l\d+\.*)(?:,[+-]?\d+(?:,\d+)?)?
 
 # 12.2. Pseudo Echo Setting
-W(?:\d+|l\d+\.*)(?:,%?[+-]\d+(?:,\d+)?)?
+W(?:\d+|l\d+\.*)(?:,%?[+-]?\d+(?:,\d+)?)?
 
 # 12.3. Keyon Delay Per Slot Setting
 sk\d+(?:,(?:\d+|l\d+\.*))?
 
 # 12.4. Broken Chord Setting
-{{(?:(?:o\d+|[<>\s])*[cdefgab]){1,16}(?:o\d+|[<>\s])*}}\d*\.*(?:,\d+(?:,\d+(?:,\d+(?:,[+-]\d+)?)?)?)?
+{{(?:(?:o\d+|[<>\s])*[cdefgab]){1,16}(?:o\d+|[<>\s])*}}\d*\.*(?:,\d+(?:,\d+(?:,\d+(?:,[+-]?\d+)?)?)?)?
 
 # 13.1. Pan setting 1
 p\d+
 
 # 13.2. Pan Setting 2
-px[+-]\d+(?:,\d+)?
+px[+-]?\d+(?:,\d+)?
 
 # 14.1. Rhythm Sound Source Shot/Dump Control
 \\[bschti]p?

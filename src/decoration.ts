@@ -1,14 +1,14 @@
 import vscode from 'vscode'
 
 import { getEnv } from './extension'
-import { MMLDocument, convertMMLNumber, findVarDefinition } from './syntax'
+import { MMLDocument, findVarDefinition } from './syntax'
 
 const DECORATION_COUNT = 6
 let decorations: Array<vscode.TextEditorDecorationType | null> = new Array(DECORATION_COUNT)
 
 export function createDecorations(config: vscode.WorkspaceConfiguration) {
     for (let i = 1; i <= DECORATION_COUNT; i++) {
-        const style = config.get<string>(`pmdmml-syntax.style${i}`)
+        const style = config.get<string>(`style${i}`)
         if (!style) continue
 
         const result = style.split('|')
@@ -34,9 +34,9 @@ export function updateDecorations(editor: vscode.TextEditor, config: vscode.Work
     const text = doc.getText()
 
     for (let i = 1; i <= DECORATION_COUNT; i++) {
-        const pattern = config.get<string>(`pmdmml-syntax.pattern${i}`)?.
-            replaceAll("\\d+", "(?:\\d+|\\$[0-9A-Fa-f]+)").
-            replaceAll("\\d*", "(?:\\d+|\\$[0-9A-Fa-f]+)?")
+        const pattern = config.get<string>(`pattern${i}`)?.
+            replaceAll('\\d+', '(?:\\d+|\\$[0-9A-Fa-f]+)').
+            replaceAll('\\d*', '(?:\\d+|\\$[0-9A-Fa-f]+)?')
         if (!pattern) continue
         if (!decorations[i]) continue
 
@@ -48,7 +48,7 @@ export function updateDecorations(editor: vscode.TextEditor, config: vscode.Work
                 if (!env) continue
 
                 const mmlDoc = MMLDocument.fromTextDoc(doc, doc.positionAt(match.index!))
-                const desc = findVarDefinition(env, mmlDoc, varDef[1], 'Current')
+                const desc = findVarDefinition(env, mmlDoc, varDef[1])
                 if (desc) {
                     const final = desc.line.match(/(!\S+).*/)![1]
                     const index = match[0].indexOf(final)

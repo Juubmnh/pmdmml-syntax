@@ -10,6 +10,10 @@ The syntax highlighting prompts are all taken from the PMDMML manual, but they d
 
 Supports cross-file search for instrument definition `.IDX` files. What may be confusing is that if a file contains multiple `#FFFile` directives, MC (PMDMML Compiler) will only adopt the last one.
 
+## ABC Notation Support
+
+MML files can be roughly translated to ABC Notation files according to some corresponding rules. Though barely readable, it is fun to see how music code turned into note graphics. Note that the algorithm can be slow or even dead when processing large files. I thought it was just match the strings, but not until I coded it did I realized how tiresome it was.
+
 ## Configuration
 
 * `pmdmml-syntax.batchPath`: represents a batch file used to compile your .MML file and carry out the action you want to take next, which can take the following as examples. It should be particularly noted that MC (PMDMML Compiler) does not support absolute paths and requires that the source file must be in a subfolder of the compiler folder.
@@ -28,6 +32,12 @@ popd
 * `pmdmml-syntax-pattern*`: regular expressions available for matching similar syntaxes.
 
 * `pmdmml-syntax-style*`: styles for regular expression matches. For simplicity, you can use a string in the specific form to mark the style you want.
+
+* `pmdmml-syntax.immediatelyConvert`: if true, the current file name will be chosen to be the output .abc file name and despite existing or not, the output file will be created or overwritten.
+
+* `pmdmml-syntax.abcSharpStyle`: determines whether sharp accidentals or flat accidentals are used.
+
+* `pmdmml-syntax.abcUnitNoteLength`: equivalent to `L:` in .abc file.
 
 ```
 Color Code | Font Style | Font Weight
