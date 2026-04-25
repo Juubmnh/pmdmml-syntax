@@ -34,8 +34,8 @@ class TuneState {
     length: FractionInstance
     unitLength: FractionInstance
     octave: number
-    sharpened: string[]
-    flattened: string[]
+    sharpened: string
+    flattened: string
 
     title: string
     composer: string
@@ -50,8 +50,8 @@ class TuneState {
         this.length = new Fraction(1, 4)
         this.unitLength = unitLength
         this.octave = 4
-        this.sharpened = []
-        this.flattened = []
+        this.sharpened = ''
+        this.flattened = ''
         this.title = ''
         this.composer = ''
         this.arranger = ''
@@ -169,26 +169,24 @@ class Tune {
             } else if (match.groups.transpose) {
                 if (match.groups.tpop === '=') {
                     for (const note of match.groups.tpnotes) {
-                        let index = state.sharpened.indexOf(note)
-                        if (index != -1) {
-                            state.sharpened.splice(index)
+                        if (state.sharpened.includes(note)) {
+                            state.sharpened.replace(note, '')
                         }
 
-                        index = state.sharpened.indexOf(note)
-                        if (index != -1) {
-                            state.flattened.splice(index)
+                        if (state.flattened.includes(note)) {
+                            state.flattened.replace(note, '')
                         }
                     }
                 } else if (match.groups.tpop === '+') {
                     for (const note of match.groups.tpnotes) {
                         if (!state.sharpened.includes(note)) {
-                            state.sharpened.push(note)
+                            state.sharpened += note
                         }
                     }
                 } else if (match.groups.tpop === '-') {
                     for (const note of match.groups.tpnotes) {
                         if (!state.flattened.includes(note)) {
-                            state.flattened.push(note)
+                            state.flattened += note
                         }
                     }
                 }
