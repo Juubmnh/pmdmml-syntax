@@ -170,11 +170,11 @@ class Tune {
                 if (match.groups.tpop === '=') {
                     for (const note of match.groups.tpnotes) {
                         if (state.sharpened.includes(note)) {
-                            state.sharpened.replace(note, '')
+                            state.sharpened = state.sharpened.replace(note, '')
                         }
 
                         if (state.flattened.includes(note)) {
-                            state.flattened.replace(note, '')
+                            state.flattened = state.flattened.replace(note, '')
                         }
                     }
                 } else if (match.groups.tpop === '+') {
@@ -417,6 +417,14 @@ function parseLength(match: RegExpMatchArray, mark: string, state: TuneState) {
 }
 
 function transLength(note: Note, proc: (length: FractionInstance) => FractionInstance | null) {
+    if (note.length) {
+        const newLength = proc(note.length)
+        if (newLength) {
+            note.length = newLength
+            return true
+        }
+        return false
+    }
     const converted = note.generate()
     if (!converted) return false
 
