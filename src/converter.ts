@@ -40,6 +40,7 @@ class TuneState {
     title: string
     composer: string
     arranger: string
+    tempo: number
     zenlen: number
     octaveReversed: boolean
     loopDefault: number
@@ -55,6 +56,7 @@ class TuneState {
         this.title = ''
         this.composer = ''
         this.arranger = ''
+        this.tempo = 40
         this.zenlen = 96
         this.octaveReversed = false
         this.loopDefault = 0
@@ -97,51 +99,58 @@ class Tune {
 
         let line = deconstructVariable(document, this.line)!
         line = deconstructLoop(line, state.loopDefault)
-
+        
         let reserved = new Map<number, TuneState>()
         const matches = line.matchAll(new RegExp(raw`(?<reserved>\`__reserved(?<reservedId>\d+)__\`)|(?<goto>\`__goto(?<gotoId>\d+)__\`)`
             + raw`|(?<note>${noteRegexOf('')})`
             + raw`|(?<xnote>(?:x|&{1,2})${optionalLengthRegexOf('x')})`
             + raw`|(?<porta>{[^a-gx]*${noteRegexOf('ptn1')}[^a-gx]*${noteRegexOf('ptn2')}[^a-gx]*}${optionalLengthRegexOf('ptl1')}(?:,${lengthRegexOf('ptl2')})?)`
-            + raw`|(?<cmdL>(?<=[\s\d])l${lengthRegexOf('l')})`
             + raw`|(?<cmdO>o(?<octave>[+-]?${NUMBER_REGEX}))`
             + raw`|(?<cmdOUp>\>)|(?<cmdODown>\<)`
             + raw`|(?<octRev>X)`
             + raw`|(?<wholeLen>C(?<newZenlen>${NUMBER_REGEX}))`
             + raw`|(?<transpose>_{(?<tpop>[=+-])(?<tpnotes>[a-g]*)})`
-            + raw`|(?<modulate>_{1,2}(?<modop>[+-])(?<modparam>${NUMBER_REGEX}))`
+            + raw`|(?<modulate>_{1,2}(?<modop>[+-]?)(?<modparam>${NUMBER_REGEX}))`
             + raw`|(?<masterModulate>_M(?<mmodop>[+-])(?<mmodparam>${NUMBER_REGEX}))`
+            + raw`|(?:q(?:${NUMBER_REGEX}|l${lengthRegexOf("q1")})?(?:-(?:l?(?:${NUMBER_REGEX}))?)?(?:,(?:${NUMBER_REGEX}|l${lengthRegexOf("q3")}))?)`
+            + raw`|(?:M[AB]?l${lengthRegexOf('mlfo')})`
+            + raw`|(?:MP[AB]?[+-]?(?:${NUMBER_REGEX})(?:,(?:${NUMBER_REGEX}|l${lengthRegexOf("mplfo")}))?)`
+            + raw`|(?:H(?:${NUMBER_REGEX})(?:,(?:${NUMBER_REGEX}))?(?:,(?:${NUMBER_REGEX}|l${lengthRegexOf("hlfo")}))?)`
+            + raw`|(?:S(?:${NUMBER_REGEX}|l${lengthRegexOf("grace")})(?:,[+-](?:${NUMBER_REGEX})(?:,(?:${NUMBER_REGEX}))?)?)`
+            + raw`|(?:W(?:${NUMBER_REGEX}|l${lengthRegexOf("pseudo")})(?:,%?[+-](?:${NUMBER_REGEX})(?:,(?:${NUMBER_REGEX}))?)?)`
+            + raw`|(?:sk(?:${NUMBER_REGEX})(?:,(?:${NUMBER_REGEX}|l${lengthRegexOf("keyon")}))?)`
+            + raw`|(?<cmdL>l${lengthRegexOf('l')})`
             + raw`|(?<cmdPrevL>(?<=l|\s|${noteRegexOf('pln')})(?:(?<plop>[=+\-^]?)${lengthRegexOf('pl')}|=?(?<plopdots>\.*)))`, 'g'))
         for (const match of matches) {
             if (!match.groups) continue
             console.log(match[0])
 
-            if (match.groups.note) {
+            if (match.groups.reserved) {
+                reserved.set(parseInt(match.groups.reservedId), state.copy())
+            } else if (match.groups.goto) {
+                state = reserved.get(parseInt(match.groups.gotoId))!.copy()
+            } else if (match.groups.note) {
                 notes.push(new Note(match, '', state.copy()))
             } else if (match.groups.xnote) {
+                if (match[0].startsWith('&') && !match.groups.xlength && !match.groups.xdots) continue
                 if (notes.length === 0) continue
                 const lastNote = notes[notes.length - 1]
 
                 const note = new Note((lastNote.match.groups!.name + lastNote.match.groups!.accidental
                     + match.groups.xlength + match.groups.xdots).match(noteRegexOf(''))!, '', state.copy())
-                if (match[0].startsWith('&') && !match[0].startsWith('&&')) {
-                    note.prefix = '-'
+                if (match[0].startsWith('&') && !match[0].startsWith('&&') && lastNote.match.groups!.name !== 'r') {
+                    lastNote.suffix = '-'
                 }
                 notes.push(note)
             } else if (match.groups.porta) {
                 const note1 = new Note((match.groups.ptn1name + match.groups.ptn1accidental + match.groups.ptl1length + match.groups.ptl1dots).match(noteRegexOf(''))!, '', state.copy())
-                transLength(note1, l => l.div(2))
+                transposeLength(note1, l => l.div(2))
                 note1.prefix = '"Portamento"'
                 notes.push(note1)
 
                 const note2 = new Note((match.groups.ptn2name + match.groups.ptn2accidental + match.groups.ptl1length + match.groups.ptl1dots).match(noteRegexOf(''))!, '', state.copy())
-                transLength(note2, l => l.div(2))
+                transposeLength(note2, l => l.div(2))
                 notes.push(note2)
-            } else if (match.groups.cmdL) {
-                state.length = new Fraction(1, convertMMLNumber(match.groups.llength)!)
-                if (match.groups.ldots) {
-                    state.length = dotAdd(state.length, match.groups.ldots.length)
-                }
             } else if (match.groups.cmdO) {
                 if (match.groups.octave.startsWith('+')) {
                     state.octave += parseInt(match.groups.octave.substring(1))
@@ -203,6 +212,10 @@ class Tune {
                     } else {
                         state.transpose = -parseInt(match.groups.modparam)
                     }
+                } else {
+                    if (!match[0].startsWith('__')) {
+                        state.transpose = parseInt(match.groups.modparam)
+                    }
                 }
             } else if (match.groups.masterModulate) {
                 if (match.groups.mmodop === '+') {
@@ -210,10 +223,15 @@ class Tune {
                 } else if (match.groups.mmodop === '-') {
                     state.transpose = -parseInt(match.groups.mmodparam)
                 }
+            } else if (match.groups.cmdL) {
+                state.length = new Fraction(1, convertMMLNumber(match.groups.llength)!)
+                if (match.groups.ldots) {
+                    state.length = dotAdd(state.length, match.groups.ldots.length)
+                }
             } else if (match.groups.cmdPrevL) {
                 if (notes.length === 0) continue
 
-                transLength(notes[notes.length - 1], l => {
+                transposeLength(notes[notes.length - 1], l => {
                     if (!match.groups) return null
                     if (match.groups.pllength) {
                         const lengthValue = parseLength(match, 'pl', state)!
@@ -237,10 +255,6 @@ class Tune {
 
                     return l
                 })
-            } else if (match.groups.reserved) {
-                reserved.set(parseInt(match.groups.reservedId), state.copy())
-            } else if (match.groups.goto) {
-                state = reserved.get(parseInt(match.groups.gotoId))!.copy()
             }
         }
 
@@ -252,14 +266,18 @@ class Note {
     match: RegExpMatchArray
     mark: string
     prefix: string
-    length: FractionInstance | null
+    suffix: string
+    eol : boolean
+    fixedLength: FractionInstance | null
     state: TuneState
 
     constructor(match: RegExpMatchArray, mark: string, state: TuneState) {
         this.match = match
         this.mark = mark
-        this.prefix = ""
-        this.length = null
+        this.prefix = ''
+        this.suffix = ''
+        this.eol = false
+        this.fixedLength = null
         this.state = state
     }
     
@@ -308,12 +326,12 @@ class Note {
             result += parseNoteName(transposed.name, transposed.octave)
         }
 
-        const parsedLength = this.length ? this.length : parseLength(this.match, this.mark, this.state)!
+        const parsedLength = this.fixedLength ? this.fixedLength : parseLength(this.match, this.mark, this.state)!
         if (parsedLength.n !== parsedLength.d) {
             result += fracToString(parsedLength)
         }
 
-        return result
+        return result + this.suffix + (this.eol ? EOL : '')
     }
 }
 
@@ -416,11 +434,11 @@ function parseLength(match: RegExpMatchArray, mark: string, state: TuneState) {
     return parsedLength
 }
 
-function transLength(note: Note, proc: (length: FractionInstance) => FractionInstance | null) {
-    if (note.length) {
-        const newLength = proc(note.length)
+function transposeLength(note: Note, proc: (length: FractionInstance) => FractionInstance | null) {
+    if (note.fixedLength) {
+        const newLength = proc(note.fixedLength)
         if (newLength) {
-            note.length = newLength
+            note.fixedLength = newLength
             return true
         }
         return false
@@ -428,13 +446,13 @@ function transLength(note: Note, proc: (length: FractionInstance) => FractionIns
     const converted = note.generate()
     if (!converted) return false
 
-    const frac = converted.match(/(\d+)\/?(\d*)/)
+    const frac = converted.match(/(?:\d+)(?:\/(\d+))?/)
     let currLength: FractionInstance | null = frac ? stringToFrac(frac[0])! : new Fraction(1)
 
     currLength = proc(currLength)
     if (!currLength) return false
 
-    note.length = currLength
+    note.fixedLength = currLength
     return true
 }
 
@@ -453,6 +471,9 @@ function parseOverallCommands(line: string, state: TuneState) {
     }
     if (cmd.groups.name === 'Arranger') {
         state.arranger = cmd.groups.param
+    }
+    if (cmd.groups.name === 'Tempo') {
+        state.tempo = parseInt(cmd.groups.param)
     }
     if (cmd.groups.name === 'Zenlen') {
         state.zenlen = parseInt(cmd.groups.param)
@@ -505,7 +526,11 @@ function deconstructLoop(line: string, loopDefault: number) {
             if (loopTimes === 0) loopTimes = 1
 
             const id = generateId()
-            const recover = substitution.groups.loopContent1 + `\`__goto${id}__\`` + (substitution.groups.loopContent1 + substitution.groups.loopContent2).replaceAll(new RegExp(raw`(?<!\`__)(?:${noteRegexOf('')}|(?:x|&{1,2})${optionalLengthRegexOf('x')})(?!oto__\`)`, 'g'), '')
+            const recover = substitution.groups.loopContent1 + `\`__goto${id}__\`` + (substitution.groups.loopContent1 + substitution.groups.loopContent2).replaceAll(new RegExp(raw`(\`__reserved\d+__\`)|(\`__goto\d+__\`)|(?:${noteRegexOf('')}|(?:x|&{1,2})${optionalLengthRegexOf('x')})`, 'g'),
+                (match, group1, group2) => {
+                    if (group1 || group2) return match
+                    return ''
+                })
             if (loopTimes == 1) {
                 result = result.replace(substitution[0], `\`__reserved${id}__\`` + recover)
             } else {
@@ -517,17 +542,64 @@ function deconstructLoop(line: string, loopDefault: number) {
     return result
 }
 
-export function mmlToABC(document: MMLDocument, unitLength: FractionInstance) {
+function segment(notes: Note[], meter: FractionInstance, maxBarsPerLine: number, unitLength: FractionInstance) {
+    let result: Note[] = [], timer = new Fraction(0), counter = 0
+
+    notes.forEach(note => {
+        if (!note.match.groups) return
+        let pieces: Note[] = [note]
+
+        transposeLength(note, l => {
+            const realLength = l.mul(unitLength)
+            timer = timer.add(realLength)
+
+            while (timer >= meter) {
+                const lastNote = pieces.at(-1)!
+                if (timer.equals(meter)) {
+                    timer = new Fraction(0)
+                    lastNote.suffix += '|'
+                    counter++
+                } else if (timer > meter) {
+                    timer = timer.sub(meter)
+
+                    pieces.push(new Note(lastNote.match, lastNote.mark, lastNote.state))
+                    const newNote = pieces.at(-1)!
+                    newNote.fixedLength = timer.div(unitLength)
+                    newNote.suffix = lastNote.suffix
+
+                    lastNote.fixedLength = l.sub(newNote.fixedLength)
+                    lastNote.suffix = lastNote.match.groups![`${lastNote.mark}name`] === 'r' ? '|' : '-|'
+                    
+                    l = newNote.fixedLength
+                    counter++
+                }
+
+                if (counter >= maxBarsPerLine) {
+                    lastNote.eol = true
+                    counter = 0
+                }
+            }
+
+            return null
+        })
+        
+        result.push(... pieces)
+    })
+
+    return result
+}
+
+export function mmlToABC(document: MMLDocument, meter: string, maxBars: number, unitLength: FractionInstance) {
     const env = getEnv()
     if (!env) return null
 
     const initialState = new TuneState(unitLength)
     const tunes: Tune[] = []
-    document.lines.forEach((line) => {
+    document.lines.forEach(line => {
         const voices = line.match(/^([A-JL-QS-Za-z]+)\s+/)
         if (voices) {
             for (const voice of voices[1].split('')) {
-                let index = tunes.findIndex((item) => {
+                let index = tunes.findIndex(item => {
                     return item.voice === voice
                 })
                 if (index === -1) {
@@ -535,7 +607,7 @@ export function mmlToABC(document: MMLDocument, unitLength: FractionInstance) {
                     index = tunes.length - 1
                 }
 
-                tunes[index].line += line.replace(voices[0], ' `SOL` ').replaceAll(/;.*/g, '')
+                tunes[index].line += line.replace(voices[0], '').replaceAll(/;.*/g, '')
             }
         } else {
             parseOverallCommands(line, initialState)
@@ -543,22 +615,40 @@ export function mmlToABC(document: MMLDocument, unitLength: FractionInstance) {
     })
 
     if (tunes.length == 0) return
+
+    const meterValue = meter === 'C' ? new Fraction(4, 4) : (meter === 'C|' ? new Fraction(2, 2) : stringToFrac(meter))
+    if (!meterValue) return null
+
     let result: string[] = [
         'X:1',
         `T:${initialState.title}`,
         `C:${initialState.arranger}`,
         `O:${initialState.composer}`,
-        'M:',
+        `M:${meter}`,
         `L:${fracToString(unitLength)}`,
-        'K:C'
+        'K:C',
+        `Q:1/4=${initialState.tempo * 48 * 4 / initialState.zenlen}`
     ]
 
-    result.push(...tunes.map(tune => {
+    const score = new Map<string, string[]>()
+    tunes.forEach(tune => {
         tune.line = tune.line.replaceAll(/`.*?`/g, '')
         const notes = tune.generate(document, initialState)
-        if (!notes) return ''
-        return `[V:${tune.voice}] ${notes.map(note => note.generate()).join('')}`
-    }))
+        if (!notes) return
 
+        const segmented = segment(notes, meterValue, maxBars, unitLength)
+        score.set(tune.voice, segmented.map(note => note.generate()).join('').split(EOL).map(line => `[V:${tune.voice}] ${line}`))
+    })
+
+    const keys = Array.from(score.keys())
+    const maxLength = Math.max(... Array.from(score.values(), lines => lines.length))
+    for (let i = 0; i < maxLength; i++) {
+        keys.forEach(voice => {
+            const lines = score.get(voice)!
+            if (i >= lines.length) return
+
+            result.push(lines[i])
+        })
+    }
     return result.join(EOL)
 }

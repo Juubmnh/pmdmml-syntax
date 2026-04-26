@@ -1,13 +1,12 @@
 import vscode from 'vscode'
 import { exec, execFile } from 'child_process'
-import Fraction from 'fraction.js'
 import fs from 'fs'
 import os from 'os'
 import path from 'path'
 
 import { convertMMLNumber, MMLDefinitionProvider, MMLDocument } from './syntax'
 import { createDecorations, updateDecorations } from './decoration'
-import { fracToString, mmlToABC, setStyle, stringToFrac } from './converter'
+import { mmlToABC, setStyle, stringToFrac } from './converter'
 
 export function getEnv() {
 	const config = vscode.workspace.getConfiguration('pmdmml-syntax')
@@ -111,21 +110,28 @@ export function activate(context: vscode.ExtensionContext) {
 			if (sharpStyle === undefined) return null
 			setStyle(sharpStyle)
 
+			const meter = config.get<string>('abcMeter')
+			if (!meter) return null
+
+			const maxBars = config.get<number>('abcMaxBarsPerLine')
+			if (!maxBars) return null
+
 			const unitLength = config.get<string>('abcUnitNoteLength')
 			if (!unitLength) return null
 
 			const unitLengthValue = stringToFrac(unitLength)
 			if (!unitLengthValue) return null
 
-			const result = mmlToABC(MMLDocument.fromTextDoc(editor.document), unitLengthValue)
+			const result = mmlToABC(MMLDocument.fromTextDoc(editor.document), meter, maxBars, unitLengthValue)
 			if (!result) return
 
 			fs.writeFile(outputPath, result, { flag: 'w' }, (err) => {
-				if (err)
-				{
+				if (err) {
 					vscode.window.showErrorMessage(err.message)
 				}
 			})
+
+			vscode.window.showInformationMessage('Convention finished.')
 		}),
 		vscode.languages.registerDefinitionProvider(
 			{ language: 'pmdmml' },
@@ -164,7 +170,7 @@ function execHandler(error: any, stdout: string, stderr: string) {
 		vscode.window.showErrorMessage(error.message)
 	}
 	if (stdout) {
-		vscode.window.showInformationMessage(stdout);
+		vscode.window.showInformationMessage(stdout)
 	}
 	if (stderr) {
 		vscode.window.showErrorMessage(stderr)

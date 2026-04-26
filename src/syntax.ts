@@ -157,7 +157,7 @@ export function findInstrumentDefinition(env: string, document: MMLDocument, tok
     visited.add(key)
 
     for (let line = document.pos.line; line >= upper; line--) {
-        const text = document.lineAt(line);
+        const text = document.lineAt(line)
         let match = text.match(instrumentDefinitionRegexOf(token))
         if (match) {
             return {
@@ -201,9 +201,9 @@ export function findInstrumentDefinition(env: string, document: MMLDocument, tok
     return null
 }
 
-function findPossibleVarDefinitions(env: string, document: MMLDocument, token: number | string): DefinitionDesc[];
-function findPossibleVarDefinitions(env: string, document: MMLDocument, token: number | string, upper: number): DefinitionDesc[];
-function findPossibleVarDefinitions(env: string, document: MMLDocument, token: number | string, upper: number, visited: Set<string>): DefinitionDesc[];
+function findPossibleVarDefinitions(env: string, document: MMLDocument, token: number | string): DefinitionDesc[]
+function findPossibleVarDefinitions(env: string, document: MMLDocument, token: number | string, upper: number): DefinitionDesc[]
+function findPossibleVarDefinitions(env: string, document: MMLDocument, token: number | string, upper: number, visited: Set<string>): DefinitionDesc[]
 
 function findPossibleVarDefinitions(env: string, document: MMLDocument, token: number | string, upper: number = 0, visited: Set<string> = new Set())
     : DefinitionDesc[] {
@@ -213,7 +213,7 @@ function findPossibleVarDefinitions(env: string, document: MMLDocument, token: n
 
     let array: DefinitionDesc[] = []
     for (let line = document.pos.line; line >= upper; line--) {
-        const text = document.lineAt(line);
+        const text = document.lineAt(line)
         const match = text.match(VAR_DEF_REGEX)
         if (match) {
             const matchedToken = convertMMLToken(match[1])
@@ -257,7 +257,7 @@ export function findVarDefinition(env: string, document: MMLDocument, token: num
     if (previous.length > 0 && previous[previous.length - 1].perfectMatch)
         return previous[previous.length - 1]
 
-    const currLine = document.pos.line;
+    const currLine = document.pos.line
     document.pos = new vscode.Position(document.lines.length - 1, 0)
     const subsequent = findPossibleVarDefinitions(env, document, token, currLine + 1)
     if (subsequent.length > 0 && subsequent[subsequent.length - 1].perfectMatch)
@@ -279,9 +279,9 @@ export function findVarDefinition(env: string, document: MMLDocument, token: num
     return maxSimilars[0]
 }
 
-function findPossibleRhythmDefinitions(env: string, document: MMLDocument, token: number): DefinitionDesc[];
-function findPossibleRhythmDefinitions(env: string, document: MMLDocument, token: number, upper: number): DefinitionDesc[];
-function findPossibleRhythmDefinitions(env: string, document: MMLDocument, token: number, upper: number, visited: Set<string>): DefinitionDesc[];
+function findPossibleRhythmDefinitions(env: string, document: MMLDocument, token: number): DefinitionDesc[]
+function findPossibleRhythmDefinitions(env: string, document: MMLDocument, token: number, upper: number): DefinitionDesc[]
+function findPossibleRhythmDefinitions(env: string, document: MMLDocument, token: number, upper: number, visited: Set<string>): DefinitionDesc[]
 
 function findPossibleRhythmDefinitions(env: string, document: MMLDocument, token: number, upper: number = 0, visited: Set<string> = new Set())
     : DefinitionDesc[] {
@@ -291,7 +291,7 @@ function findPossibleRhythmDefinitions(env: string, document: MMLDocument, token
 
     let array: DefinitionDesc[] = []
     for (let line = document.pos.line; line >= upper; line--) {
-        const text = document.lineAt(line);
+        const text = document.lineAt(line)
         const match = text.match(RHYTHM_DEF_REGEX)
         if (match) {
             if (match[1] && token === convertMMLNumber(match[1])) {
@@ -325,7 +325,7 @@ export function findRhythmDefinition(env: string, document: MMLDocument, token: 
     if (previous.length > 0 && previous[previous.length - 1].perfectMatch)
         return previous[previous.length - 1]
 
-    const currLine = document.pos.line;
+    const currLine = document.pos.line
     document.pos = new vscode.Position(document.lines.length - 1, 0)
     const subsequent = findPossibleRhythmDefinitions(env, document, token, currLine + 1)
     if (subsequent.length > 0 && subsequent[subsequent.length - 1].perfectMatch)
@@ -376,7 +376,7 @@ export class MMLDefinitionProvider implements vscode.HoverProvider, vscode.Defin
         if (range) {
             return new Location(document.uri, range.start)
         }
-        
+
         range = document.getWordRangeAtPosition(position, new RegExp(IN_LINE_REGEX.source + INSTRU_USAGE_REGEX.source))
         if (range) {
             const token = document.getText(range)

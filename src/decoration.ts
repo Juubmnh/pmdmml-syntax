@@ -52,7 +52,7 @@ export function updateDecorations(editor: vscode.TextEditor, config: vscode.Work
                 if (desc) {
                     const final = desc.line.match(/(!\S+).*/)![1]
                     const index = match[0].indexOf(final)
-                    const start = doc.positionAt(match.index! +index)
+                    const start = doc.positionAt(match.index! + index)
                     const end = doc.positionAt(match.index! + index + final.length)
                     ranges.push(new vscode.Range(start, end))
                 }

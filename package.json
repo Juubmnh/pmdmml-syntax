@@ -3,7 +3,7 @@
   "displayName": "PMDMML-Syntax",
   "icon": "icon.png",
   "description": "Provides syntax highlighting for M.Kajihara's Professional Music Driver MML",
-  "version": "1.0.13",
+  "version": "1.0.14",
   "publisher": "Juubmnh",
   "repository": "https://github.com/Juubmnh/pmdmml-syntax",
   "license": "MIT",
@@ -93,6 +93,14 @@
           "pmdmml-syntax.abcSharpStyle": {
             "type": "boolean",
             "default": true
+          },
+          "pmdmml-syntax.abcMeter": {
+            "type": "string",
+            "default": "C"
+          },
+          "pmdmml-syntax.abcMaxBarsPerLine": {
+            "type": "number",
+            "default": 4
           },
           "pmdmml-syntax.abcUnitNoteLength": {
             "type": "string",

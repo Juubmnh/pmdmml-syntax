@@ -33,16 +33,20 @@ popd
 
 * `pmdmml-syntax-style*`: styles for regular expression matches. For simplicity, you can use a string in the specific form to mark the style you want.
 
-* `pmdmml-syntax.immediatelyConvert`: if true, the current file name will be chosen to be the output .abc file name and despite existing or not, the output file will be created or overwritten.
-
-* `pmdmml-syntax.abcSharpStyle`: determines whether sharp accidentals or flat accidentals are used.
-
-* `pmdmml-syntax.abcUnitNoteLength`: equivalent to `L:` in .abc file.
-
 ```
 Color Code | Font Style | Font Weight
 e.g. #ffffff|italic|900
 ```
+
+* `pmdmml-syntax.immediatelyConvert`: if true, the current file name will be chosen to be the output .abc file name and despite existing or not, the output file will be created or overwritten.
+
+* `pmdmml-syntax.abcSharpStyle`: determines whether sharp accidentals or flat accidentals are used.
+
+* `pmdmml-syntax.abcMeter`: equivalent to `M:` in .abc file.
+
+* `pmdmml-syntax.abcMaxBarsPerLine`: literally.
+
+* `pmdmml-syntax.abcUnitNoteLength`: equivalent to `L:` in .abc file.
 
 ---
 
