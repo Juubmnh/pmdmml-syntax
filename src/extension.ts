@@ -6,7 +6,7 @@ import path from 'path'
 
 import { convertMMLNumber, MMLDefinitionProvider, MMLDocument } from './syntax'
 import { createDecorations, updateDecorations } from './decoration'
-import { mmlToABC, setStyle, stringToFrac } from './converter'
+import { mmlToABC, stringToFrac } from './converter'
 
 export function getEnv() {
 	const config = vscode.workspace.getConfiguration('pmdmml-syntax')
@@ -105,10 +105,6 @@ export function activate(context: vscode.ExtensionContext) {
 					if (overwrite === 'No') return
 				}
 			}
-
-			const sharpStyle = config.get<boolean>('abcSharpStyle')
-			if (sharpStyle === undefined) return null
-			setStyle(sharpStyle)
 
 			const meter = config.get<string>('abcMeter')
 			if (!meter) return null

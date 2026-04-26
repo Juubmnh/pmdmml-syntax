@@ -30,12 +30,21 @@ function dotAdd(frac: FractionInstance, order: number) {
     return frac.add(frac.mul(new Fraction(-1, Math.pow(2, order)).add(1)))
 }
 
+const EMPTY_TONALITY = new Map<string, number>([
+    ['c', 0],
+    ['d', 0],
+    ['e', 0],
+    ['f', 0],
+    ['g', 0],
+    ['a', 0],
+    ['b', 0]
+])
+
 class TuneState {
     length: FractionInstance
     unitLength: FractionInstance
     octave: number
-    sharpened: string
-    flattened: string
+    tonality: Map<string, number>
 
     title: string
     composer: string
@@ -51,8 +60,7 @@ class TuneState {
         this.length = new Fraction(1, 4)
         this.unitLength = unitLength
         this.octave = 4
-        this.sharpened = ''
-        this.flattened = ''
+        this.tonality = new Map(EMPTY_TONALITY)
         this.title = ''
         this.composer = ''
         this.arranger = ''
@@ -68,8 +76,7 @@ class TuneState {
         const newState = new TuneState(this.unitLength)
         newState.length = this.length
         newState.octave = this.octave
-        newState.sharpened = this.sharpened
-        newState.flattened = this.flattened
+        newState.tonality = new Map(this.tonality)
         newState.title = this.title
         newState.composer = this.composer
         newState.arranger = this.arranger
@@ -99,7 +106,7 @@ class Tune {
 
         let line = deconstructVariable(document, this.line)!
         line = deconstructLoop(line, state.loopDefault)
-        
+
         let reserved = new Map<number, TuneState>()
         const matches = line.matchAll(new RegExp(raw`(?<reserved>\`__reserved(?<reservedId>\d+)__\`)|(?<goto>\`__goto(?<gotoId>\d+)__\`)`
             + raw`|(?<note>${noteRegexOf('')})`
@@ -178,25 +185,15 @@ class Tune {
             } else if (match.groups.transpose) {
                 if (match.groups.tpop === '=') {
                     for (const note of match.groups.tpnotes) {
-                        if (state.sharpened.includes(note)) {
-                            state.sharpened = state.sharpened.replace(note, '')
-                        }
-
-                        if (state.flattened.includes(note)) {
-                            state.flattened = state.flattened.replace(note, '')
-                        }
+                        state.tonality.set(note, 0)
                     }
                 } else if (match.groups.tpop === '+') {
                     for (const note of match.groups.tpnotes) {
-                        if (!state.sharpened.includes(note)) {
-                            state.sharpened += note
-                        }
+                        state.tonality.set(note, 1)
                     }
                 } else if (match.groups.tpop === '-') {
                     for (const note of match.groups.tpnotes) {
-                        if (!state.flattened.includes(note)) {
-                            state.flattened += note
-                        }
+                        state.tonality.set(note, -1)
                     }
                 }
             } else if (match.groups.modulate) {
@@ -267,7 +264,7 @@ class Note {
     mark: string
     prefix: string
     suffix: string
-    eol : boolean
+    eol: boolean
     fixedLength: FractionInstance | null
     state: TuneState
 
@@ -280,48 +277,62 @@ class Note {
         this.fixedLength = null
         this.state = state
     }
-    
-    generate() {
+
+    generate(tonalityCache: Map<string, number>) {
         if (!this.match.groups) return null
         const name = this.match.groups[`${this.mark}name`], accidental = this.match.groups[`${this.mark}accidental`]
 
         let result = this.prefix
 
-        let offset = null
-        if (accidental === '=') {
-            if (this.state.sharpened.includes(name)) {
-                offset = -1
-            }
-            if (this.state.flattened.includes(name)) {
-                offset = 1
-            }
-        }
-        else if (accidental === '+') {
-            offset = 1
-        }
-        else if (accidental === '-') {
-            offset = -1
-        }
-
-        if (this.state.sharpened.includes(name)) {
-            if (offset) {
-                offset++
-            } else {
-                offset = 1
-            }
-        }
-        if (this.state.flattened.includes(name)) {
-            if (offset) {
-                offset--
-            } else {
-                offset = -1
-            }
-        }
-
         if (name === 'r') {
             result += 'z'
         } else {
-            const transposed = transposeNote(this.state.mainTranspose + this.state.transpose, name, offset ?? 0, this.state.octave)
+            const myTonality = this.state.tonality.get(name)!
+
+            let offset = null
+            if (accidental === '=') {
+                offset = -myTonality
+            }
+            else if (accidental === '+') {
+                offset = 1
+            }
+            else if (accidental === '-') {
+                offset = -1
+            }
+
+            if (myTonality > 0) {
+                if (offset) {
+                    offset++
+                } else {
+                    offset = 1
+                }
+            } else if (myTonality < 0) {
+                if (offset) {
+                    offset--
+                } else {
+                    offset = -1
+                }
+            }
+
+            const transposed = transposeNote(this.state.mainTranspose + this.state.transpose, name, offset, this.state.octave)
+            if (!transposed) return null
+
+            const currTonality = tonalityCache.get(transposed.name)!
+            if (transposed.accidental === '^' || transposed.accidental === '_') {
+                const transposedOffset = transposed.accidental === '^' ? 1 : -1
+                if (transposedOffset === currTonality) {
+                    transposed.accidental = ''
+                } else {
+                    tonalityCache.set(name, transposedOffset)
+                }
+            }
+
+            if (this.suffix.includes('|')) {
+                for (const key of tonalityCache.keys()) {
+                    tonalityCache.set(key, 0)
+                }
+            }
+
             result += transposed.accidental
             result += parseNoteName(transposed.name, transposed.octave)
         }
@@ -350,14 +361,9 @@ const SEMITONE_TO_FLAT_NAME: string[] = [
     'c', '_d', 'd', '_e', 'e', 'f', '_g', 'g', '_a', 'a', '_b', 'b'
 ]
 
-let sharpStyle: boolean
-export function setStyle(isSharpStyle: boolean) {
-    sharpStyle = isSharpStyle
-}
-
-function transposeNote(semitones: number, name: string, offset: number, octave: number) {
+function transposeNoteDirectly(semitones: number, name: string, offset: number | null, octave: number, sharpStyle: boolean) {
     const baseSemitone = NOTE_TO_SEMITONE[name]
-    let absoluteSemitones = (octave * 12) + baseSemitone + offset
+    let absoluteSemitones = (octave * 12) + baseSemitone + (offset ?? 0)
 
     absoluteSemitones += semitones
 
@@ -380,6 +386,48 @@ function transposeNote(semitones: number, name: string, offset: number, octave: 
             accidental: '=',
             octave: newOctave
         }
+    }
+}
+
+function transposeNote(semitones: number, name: string, offset: number | null, octave: number) {
+    const baseSemitone = NOTE_TO_SEMITONE[name]
+    const newAbsSemi = octave * 12 + baseSemitone + (offset ?? 0) + semitones
+    let index = (baseSemitone + semitones) % 12
+    if (index < 0) {
+        index += 12
+    }
+
+    const naturalName = semitones > 0 ? SEMITONE_TO_SHARP_NAME[index].at(-1)! : SEMITONE_TO_FLAT_NAME[index].at(-1)!
+    let naturalOctave = Math.floor(newAbsSemi / 12)
+    let naturalAbsSemi = naturalOctave * 12 + NOTE_TO_SEMITONE[naturalName]
+    if (naturalAbsSemi - newAbsSemi > 2) {
+        naturalAbsSemi -= 12
+        naturalOctave--
+    } else if (naturalAbsSemi - newAbsSemi < -2) {
+        naturalAbsSemi += 12
+        naturalOctave++
+    }
+
+    const delta = newAbsSemi - naturalAbsSemi
+    let accidental
+    if (delta == -2) {
+        accidental = '__'
+    } else if (delta == -1) {
+        accidental = '_'
+    } else if (delta == 0) {
+        accidental = offset ? '=' : ''
+    } else if (delta == 1) {
+        accidental = '^'
+    } else if (delta == 2) {
+        accidental = '^^'
+    } else {
+        return transposeNoteDirectly(semitones, name, offset, octave, semitones > 0)
+    }
+
+    return {
+        name: naturalName,
+        accidental: accidental,
+        octave: naturalOctave
     }
 }
 
@@ -443,7 +491,7 @@ function transposeLength(note: Note, proc: (length: FractionInstance) => Fractio
         }
         return false
     }
-    const converted = note.generate()
+    const converted = note.generate(new Map<string, number>(EMPTY_TONALITY))
     if (!converted) return false
 
     const frac = converted.match(/(?:\d+)(?:\/(\d+))?/)
@@ -569,7 +617,7 @@ function segment(notes: Note[], meter: FractionInstance, maxBarsPerLine: number,
 
                     lastNote.fixedLength = l.sub(newNote.fixedLength)
                     lastNote.suffix = lastNote.match.groups![`${lastNote.mark}name`] === 'r' ? '|' : '-|'
-                    
+
                     l = newNote.fixedLength
                     counter++
                 }
@@ -582,8 +630,8 @@ function segment(notes: Note[], meter: FractionInstance, maxBarsPerLine: number,
 
             return null
         })
-        
-        result.push(... pieces)
+
+        result.push(...pieces)
     })
 
     return result
@@ -637,11 +685,12 @@ export function mmlToABC(document: MMLDocument, meter: string, maxBars: number, 
         if (!notes) return
 
         const segmented = segment(notes, meterValue, maxBars, unitLength)
-        score.set(tune.voice, segmented.map(note => note.generate()).join('').split(EOL).map(line => `[V:${tune.voice}] ${line}`))
+        const tonalityCache = new Map(EMPTY_TONALITY)
+        score.set(tune.voice, segmented.map(note => note.generate(tonalityCache)).join('').split(EOL).map(line => `[V:${tune.voice}] ${line}`))
     })
 
     const keys = Array.from(score.keys())
-    const maxLength = Math.max(... Array.from(score.values(), lines => lines.length))
+    const maxLength = Math.max(...Array.from(score.values(), lines => lines.length))
     for (let i = 0; i < maxLength; i++) {
         keys.forEach(voice => {
             const lines = score.get(voice)!
