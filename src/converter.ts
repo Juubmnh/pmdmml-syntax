@@ -30,7 +30,70 @@ function dotAdd(frac: FractionInstance, order: number) {
     return frac.add(frac.mul(new Fraction(-1, Math.pow(2, order)).add(1)))
 }
 
-const EMPTY_TONALITY = new Map<string, number>([
+const CFLAT_TONALITY = new Map<string, number>([
+    ['c', -1],
+    ['d', -1],
+    ['e', -1],
+    ['f', -1],
+    ['g', -1],
+    ['a', -1],
+    ['b', -1]
+])
+const GFLAT_TONALITY = new Map<string, number>([
+    ['c', -1],
+    ['d', -1],
+    ['e', -1],
+    ['f', 0],
+    ['g', -1],
+    ['a', -1],
+    ['b', -1]
+])
+const DFLAT_TONALITY = new Map<string, number>([
+    ['c', 0],
+    ['d', -1],
+    ['e', -1],
+    ['f', 0],
+    ['g', -1],
+    ['a', -1],
+    ['b', -1]
+])
+const AFLAT_TONALITY = new Map<string, number>([
+    ['c', 0],
+    ['d', -1],
+    ['e', -1],
+    ['f', 0],
+    ['g', 0],
+    ['a', -1],
+    ['b', -1]
+])
+const EFLAT_TONALITY = new Map<string, number>([
+    ['c', 0],
+    ['d', 0],
+    ['e', -1],
+    ['f', 0],
+    ['g', 0],
+    ['a', -1],
+    ['b', -1]
+])
+const BFLAT_TONALITY = new Map<string, number>([
+    ['c', 0],
+    ['d', 0],
+    ['e', -1],
+    ['f', 0],
+    ['g', 0],
+    ['a', 0],
+    ['b', -1]
+])
+const F_TONALITY = new Map<string, number>([
+    ['c', 0],
+    ['d', 0],
+    ['e', 0],
+    ['f', 0],
+    ['g', 0],
+    ['a', 0],
+    ['b', -1]
+])
+const C_TONALITY = new Map<string, number>([
     ['c', 0],
     ['d', 0],
     ['e', 0],
@@ -39,6 +102,87 @@ const EMPTY_TONALITY = new Map<string, number>([
     ['a', 0],
     ['b', 0]
 ])
+const G_TONALITY = new Map<string, number>([
+    ['c', 0],
+    ['d', 0],
+    ['e', 0],
+    ['f', 1],
+    ['g', 0],
+    ['a', 0],
+    ['b', 0]
+])
+const D_TONALITY = new Map<string, number>([
+    ['c', 1],
+    ['d', 0],
+    ['e', 0],
+    ['f', 1],
+    ['g', 0],
+    ['a', 0],
+    ['b', 0]
+])
+const A_TONALITY = new Map<string, number>([
+    ['c', 1],
+    ['d', 0],
+    ['e', 0],
+    ['f', 1],
+    ['g', 1],
+    ['a', 0],
+    ['b', 0]
+])
+const E_TONALITY = new Map<string, number>([
+    ['c', 1],
+    ['d', 1],
+    ['e', 0],
+    ['f', 1],
+    ['g', 1],
+    ['a', 0],
+    ['b', 0]
+])
+const B_TONALITY = new Map<string, number>([
+    ['c', 1],
+    ['d', 1],
+    ['e', 0],
+    ['f', 1],
+    ['g', 1],
+    ['a', 1],
+    ['b', 0]
+])
+const FSHARP_TONALITY = new Map<string, number>([
+    ['c', 1],
+    ['d', 1],
+    ['e', 1],
+    ['f', 1],
+    ['g', 1],
+    ['a', 1],
+    ['b', 0]
+])
+const CSHARP_TONALITY = new Map<string, number>([
+    ['c', 1],
+    ['d', 1],
+    ['e', 1],
+    ['f', 1],
+    ['g', 1],
+    ['a', 1],
+    ['b', 1]
+])
+const TONALITY_MAP = new Map<string, Map<string, number>>([
+    ['Cb', CFLAT_TONALITY],
+    ['C', C_TONALITY],
+    ['C#', CSHARP_TONALITY],
+    ['Db', DFLAT_TONALITY],
+    ['D', D_TONALITY],
+    ['Eb', EFLAT_TONALITY],
+    ['E', E_TONALITY],
+    ['F', F_TONALITY],
+    ['F#', FSHARP_TONALITY],
+    ['Gb', GFLAT_TONALITY],
+    ['G', G_TONALITY],
+    ['Ab', AFLAT_TONALITY],
+    ['A', A_TONALITY],
+    ['Bb', BFLAT_TONALITY],
+    ['B', B_TONALITY]
+])
+let defaultTonality = C_TONALITY
 
 class TuneState {
     length: FractionInstance
@@ -60,7 +204,7 @@ class TuneState {
         this.length = new Fraction(1, 4)
         this.unitLength = unitLength
         this.octave = 4
-        this.tonality = new Map(EMPTY_TONALITY)
+        this.tonality = new Map(C_TONALITY)
         this.title = ''
         this.composer = ''
         this.arranger = ''
@@ -278,7 +422,7 @@ class Note {
         this.state = state
     }
 
-    generate(tonalityCache: Map<string, number>) {
+    generate(tonalityCache: Map<number, Map<string, number>>) {
         if (!this.match.groups) return null
         const name = this.match.groups[`${this.mark}name`], accidental = this.match.groups[`${this.mark}accidental`]
 
@@ -314,27 +458,78 @@ class Note {
                 }
             }
 
-            const transposed = transposeNote(this.state.mainTranspose + this.state.transpose, name, offset, this.state.octave)
+            // const transposed = transposeNote(this.state.mainTranspose + this.state.transpose, name, offset, this.state.octave)
+            // if (!transposed) return null
+
+            // if (transposed.accidental === '') {
+            //     const transposedTonality = tonalityCache.get(transposed.octave)
+            //     if (transposedTonality) {
+            //         transposed.accidental = '='
+            //         transposedTonality.set(transposed.name, 0)
+            //     }
+            // } else if (transposed.accidental === '=') {
+            //     tonalityCache.get(transposed.octave)?.set(transposed.name, 0)
+            // } else {
+            //     let transposedOffset
+            //     if (transposed.accidental === '__') {
+            //         transposedOffset = -2
+            //     } else if (transposed.accidental === '_') {
+            //         transposedOffset = -1
+            //     } else if (transposed.accidental === '^') {
+            //         transposedOffset = 1
+            //     } else if (transposed.accidental === '^^') {
+            //         transposedOffset = 2
+            //     }
+
+            //     const transposedTonality = tonalityCache.get(transposed.octave)
+            //     if (transposedOffset === transposedTonality?.get(transposed.name)) {
+            //         transposed.accidental = ''
+            //     } else {
+            //         if (transposedTonality) {
+            //             transposedTonality.set(transposed.name, transposedOffset!)
+            //         } else {
+            //             const emptyTonality = new Map(defaultTonality)
+            //             emptyTonality.set(transposed.name, transposedOffset!)
+            //             tonalityCache.set(transposed.octave, emptyTonality)
+            //         }
+            //     }
+            // }
+
+            const transposed = transposeNote(this.state.mainTranspose + this.state.transpose, name, offset ?? 0, this.state.octave)
             if (!transposed) return null
 
-            const currTonality = tonalityCache.get(transposed.name)!
-            if (transposed.accidental === '^' || transposed.accidental === '_') {
-                const transposedOffset = transposed.accidental === '^' ? 1 : -1
-                if (transposedOffset === currTonality) {
-                    transposed.accidental = ''
-                } else {
-                    tonalityCache.set(name, transposedOffset)
-                }
+            let transposedOffset
+            if (transposed.accidental === '__') {
+                transposedOffset = -2
+            } else if (transposed.accidental === '_') {
+                transposedOffset = -1
+            } else if (transposed.accidental === '=' || transposed.accidental == '') {
+                transposedOffset = 0
+            } else if (transposed.accidental === '^') {
+                transposedOffset = 1
+            } else if (transposed.accidental === '^^') {
+                transposedOffset = 2
             }
 
-            if (this.suffix.includes('|')) {
-                for (const key of tonalityCache.keys()) {
-                    tonalityCache.set(key, 0)
+            const transposedTonality = tonalityCache.get(transposed.octave)
+            if (transposedOffset === (transposedTonality ? transposedTonality!.get(transposed.name) : defaultTonality.get(transposed.name))) {
+                transposed.accidental = ''
+            } else {
+                if (transposedTonality) {
+                    transposedTonality.set(transposed.name, transposedOffset!)
+                } else {
+                    const newTonality = new Map(defaultTonality)
+                    newTonality.set(transposed.name, transposedOffset!)
+                    tonalityCache.set(transposed.octave, newTonality)
                 }
             }
 
             result += transposed.accidental
             result += parseNoteName(transposed.name, transposed.octave)
+        }
+
+        if (this.suffix.includes('|')) {
+            tonalityCache.clear()
         }
 
         const parsedLength = this.fixedLength ? this.fixedLength : parseLength(this.match, this.mark, this.state)!
@@ -415,7 +610,7 @@ function transposeNote(semitones: number, name: string, offset: number | null, o
     } else if (delta == -1) {
         accidental = '_'
     } else if (delta == 0) {
-        accidental = offset ? '=' : ''
+        accidental = offset === null ? '' : '='
     } else if (delta == 1) {
         accidental = '^'
     } else if (delta == 2) {
@@ -491,7 +686,7 @@ function transposeLength(note: Note, proc: (length: FractionInstance) => Fractio
         }
         return false
     }
-    const converted = note.generate(new Map<string, number>(EMPTY_TONALITY))
+    const converted = note.generate(new Map<number, Map<string, number>>())
     if (!converted) return false
 
     const frac = converted.match(/(?:\d+)(?:\/(\d+))?/)
@@ -637,9 +832,13 @@ function segment(notes: Note[], meter: FractionInstance, maxBarsPerLine: number,
     return result
 }
 
-export function mmlToABC(document: MMLDocument, meter: string, maxBars: number, unitLength: FractionInstance) {
+export function mmlToABC(document: MMLDocument, meter: string, maxBars: number, unitLength: FractionInstance, tonality: string) {
     const env = getEnv()
     if (!env) return null
+
+    if (TONALITY_MAP.has(tonality)) {
+        defaultTonality = TONALITY_MAP.get(tonality)!
+    }
 
     const initialState = new TuneState(unitLength)
     const tunes: Tune[] = []
@@ -674,7 +873,7 @@ export function mmlToABC(document: MMLDocument, meter: string, maxBars: number, 
         `O:${initialState.composer}`,
         `M:${meter}`,
         `L:${fracToString(unitLength)}`,
-        'K:C',
+        `K:${tonality}`,
         `Q:1/4=${initialState.tempo * 48 * 4 / initialState.zenlen}`
     ]
 
@@ -685,7 +884,7 @@ export function mmlToABC(document: MMLDocument, meter: string, maxBars: number, 
         if (!notes) return
 
         const segmented = segment(notes, meterValue, maxBars, unitLength)
-        const tonalityCache = new Map(EMPTY_TONALITY)
+        const tonalityCache = new Map<number, Map<string, number>>()
         score.set(tune.voice, segmented.map(note => note.generate(tonalityCache)).join('').split(EOL).map(line => `[V:${tune.voice}] ${line}`))
     })
 

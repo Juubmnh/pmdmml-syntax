@@ -42,9 +42,11 @@ e.g. #ffffff|italic|900
 
 * `pmdmml-syntax.abcMeter`: equivalent to `M:` in .abc file.
 
-* `pmdmml-syntax.abcMaxBarsPerLine`: literally.
+* `pmdmml-syntax.abcMaxBarsPerLine`: EOL will be automatically added when reaching the bar count limit.
 
 * `pmdmml-syntax.abcUnitNoteLength`: equivalent to `L:` in .abc file.
+
+* `pmdmml-syntax.abcMajorKeySignature`: the major key signature of the tonality. Only major patterns (Cb, Gb, Db, Ab, Eb, Bb, F, C, G, D, A, E, B, F#, C#) are recognized.
 
 ---
 

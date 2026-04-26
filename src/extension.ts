@@ -117,8 +117,10 @@ export function activate(context: vscode.ExtensionContext) {
 
 			const unitLengthValue = stringToFrac(unitLength)
 			if (!unitLengthValue) return null
+			
+			const keySign = config.get<string>('abcMajorKeySignature') ?? ''
 
-			const result = mmlToABC(MMLDocument.fromTextDoc(editor.document), meter, maxBars, unitLengthValue)
+			const result = mmlToABC(MMLDocument.fromTextDoc(editor.document), meter, maxBars, unitLengthValue, keySign)
 			if (!result) return
 
 			fs.writeFile(outputPath, result, { flag: 'w' }, (err) => {
